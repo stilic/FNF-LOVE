@@ -104,12 +104,27 @@
 		"sprite": "noteSplashes",
 
 		"animations": [
-			["splash0", "Note splash 1", 24, false, true],
-			["splash1", "Note splash 2", 24, false, true]
+			["splash0", "splash1", 24, false, true],
+			["splash1", "splash2", 24, false, true],
+			["splash2", "splash3", 24, false, true]
 		],
 
-		"alpha": 0.6,
-		"scale": 6,
-		"antialiasing": false
-	}
+		"alpha": 1,
+		"scale": 4,
+		"antialiasing": false,
+		"blend": "screen"
+	},
+
+  	"covers": {
+    	"sprite": "holdCover",
+
+    	"animations": [
+      		["start", "cover start", 24, false, true],
+      		["loop", "cover0", 24, true, true],
+      		["end", "cover end", 24, false, true]
+    	],
+
+    	"scale": 6,
+    	"antialiasing": false
+  }
 }
