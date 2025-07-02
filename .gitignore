@@ -37,4 +37,5 @@ luac.out
 *.lnk
 *.sublime-workspace
 mods
+addons
 release

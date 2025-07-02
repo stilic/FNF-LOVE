@@ -1,0 +1,106 @@
+{
+	"props": [
+		{
+			"danceEvery": 0,
+			"zIndex": 0,
+			"position": [-150, -50],
+			"scale": [1, 1],
+			"animType": "sparrow",
+			"name": "skyBG",
+			"isPixel": false,
+			"assetPath": "limoSunset",
+			"scroll": [0.36, 0.11],
+			"alpha": 1,
+			"animations": [],
+			"shader": "wave"
+		},
+		{
+			"danceEvery": 0,
+			"zIndex": 10,
+			"position": [-200, 480],
+			"scale": [1, 1],
+			"animType": "sparrow",
+			"name": "bgLimo",
+			"isPixel": false,
+			"assetPath": "bgLimo",
+			"scroll": [0.4, 0.4],
+			"alpha": 1,
+			"animations": [
+				{
+					"name": "drive",
+					"prefix": "background limo pink",
+					"frameRate": 24,
+					"looped": true
+				}
+			],
+			"startingAnimation": "drive"
+		},
+		{
+			"danceEvery": 0,
+			"zIndex": 110,
+			"position": [-120, 550],
+			"scale": [1, 1],
+			"animType": "sparrow",
+			"name": "limo",
+			"isPixel": false,
+			"assetPath": "limoDrive",
+			"scroll": [1, 1],
+			"alpha": 1,
+			"animations": [
+				{
+					"name": "drive",
+					"prefix": "Limo stage",
+					"frameRate": 24,
+					"looped": true
+				}
+			],
+			"startingAnimation": "drive"
+		},
+		{
+			"danceEvery": 0,
+			"zIndex": 4000,
+			"position": [-300, 160],
+			"scale": [1, 1],
+			"animType": "sparrow",
+			"name": "fastCar",
+			"isPixel": false,
+			"assetPath": "fastCarLol",
+			"scroll": [1, 1],
+			"alpha": 1,
+			"animations": [],
+			"moves": true
+		},
+		{
+			"danceEvery": 0,
+			"zIndex": 4500,
+			"position": [-428, -304],
+			"scale": [0.76, 0.76],
+			"animType": "sparrow",
+			"name": "skyOverlay",
+			"isPixel": false,
+			"assetPath": "limoOverlay",
+			"scroll": [0.23, 0.18],
+			"alpha": 0.168,
+			"animations": [],
+			"blend": "add"
+		}
+	],
+	"cameraZoom": 0.9,
+	"version": "1.0.0",
+	"name": "Limo Stage",
+	"directory": "limo",
+	"characters": {
+		"bf": {
+			"position": [1078, -156],
+			"zIndex": 200
+		},
+		"dad": {
+			"position": [100, 100],
+			"zIndex": 300
+		},
+		"gf": {
+			"position": [400, 130],
+			"zIndex": 100
+		}
+	}
+}

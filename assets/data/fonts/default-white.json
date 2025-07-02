@@ -1,0 +1,27 @@
+{
+	"name": "default-white",
+	"offsets": [0, -52],
+
+	"glyphs": {
+		"'": ["-apostraphie-", [0, 48]],
+		"-": ["-dash-"],
+		"&": ["-andpersand-"],
+		"\\": ["-back slash-"],
+		"/": ["-forward slash-"],
+		",": ["-comma-"],
+		"“": ["-start quote-"],
+		"”": ["-end quote-"],
+		"\"": ["-end quote-"],
+		"!": ["-exclamation point-"],
+		"?": ["-question mark-"],
+		">": ["-greater than-"],
+		"<": ["-less than-"],
+		".": ["-period-"],
+		"↓": ["-down arrow-"],
+		"↑": ["-up arrow-"],
+		"→": ["-right arrow-"],
+		"←": ["-left arrow-"],
+		" ": [28],
+		"\t": [50]
+	}
+}

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TextureAtlas imagePath="holdCover.png">
+	<SubTexture name="cover0000" x="0" y="0" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover0001" x="36" y="0" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover0002" x="72" y="0" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover0003" x="108" y="0" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover0004" x="0" y="32" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover0005" x="36" y="32" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover0006" x="72" y="32" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover0007" x="108" y="32" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover end0000" x="0" y="64" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover end0001" x="36" y="64" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover end0002" x="72" y="64" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover end0003" x="108" y="64" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover end0004" x="0" y="96" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover end0005" x="36" y="96" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover end0006" x="72" y="96" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover end0007" x="108" y="96" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+	<SubTexture name="cover start0000" x="36" y="64" width="36" height="32" frameX="0" frameY="0" frameWidth="36" frameHeight="32" />
+</TextureAtlas>
