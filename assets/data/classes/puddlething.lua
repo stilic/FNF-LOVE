@@ -41,12 +41,9 @@ function Puddle:update(dt)
 
 				local scaleX = canvasW / copyW
 				local scaleY = (canvasH / copyH) * 2.3
-				
-				-- Calculate skew based on camera scroll offset from the zero point
 				local scrollOffset = (game.camera.scroll.x * 1.8) - 1322
-				local skewFactor = scrollOffset * 0.002 -- Adjust multiplier as needed
-				
-				-- Apply skew transformation
+				local skewFactor = scrollOffset * 0.002
+
 				love.graphics.shear(skewFactor, 0)
 				
 				love.graphics.draw(self.copyFrom.canvas, 0, canvasH * 1.4, 0, scaleX, -scaleY)
