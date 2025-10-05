@@ -143,10 +143,6 @@ function create()
 	puddle.alpha = 0.6
 	puddle.blend = "add"
 	add(puddle)
-
-	textthing = Text(150, 400, "")
-	textthing.cameras = {camOther}
-	add(textthing)
 end
 
 function postDraw()
@@ -304,8 +300,6 @@ function update(dt)
 	local remap = math.remapToRange(conductor.time / 1000, 0, game.sound.music.duration,
 		rainStartIntensity, rainEndIntensity)
 	rain.intensity = remap
-
-	textthing.content = camFollow.x
 end
 
 function beat(b)
