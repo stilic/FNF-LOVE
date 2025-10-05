@@ -10,8 +10,12 @@ local data = {
 		ClientPrefs.data.antialiasing = value
 		Object.defaultAntialiasing = value
 	end},
-	{"lowQuality", "Low quality", "boolean"},
-	{"shader",     "Shaders",     "boolean"},
+	{"lowQuality", "Low quality",  "boolean"},
+	{"shader",     "Shaders",      "boolean"},
+	{"margin",     "Screen margin", "number", function(add)
+		local value = math.clamp(ClientPrefs.data.margin + add, 0, game.width / 6)
+		ClientPrefs.data.margin = value
+	end},
 
 	{"WINDOW"},
 	{"fullscreen", "Fullscreen", "boolean", function()
@@ -124,8 +128,7 @@ local data = {
 }
 
 if love.system.getDevice() == "Mobile" then
-	table.remove(data, 6)
-	table.remove(data, 6)
+	table.remove(data, 7)
 end
 
 local Display = Settings:base("Display", data)

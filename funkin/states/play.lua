@@ -1,5 +1,7 @@
 ---@class PlayState:State
 local PlayState = State:extend("PlayState")
+local PauseButton = require "funkin.gameplay.ui.pausebutton"
+
 PlayState.defaultDifficulty = "normal"
 PlayState.transIn = TransitionData(0.5)
 
@@ -134,7 +136,7 @@ function PlayState:preload()
 			local data = Parser.getCharacter(char)
 			if data then
 				local kind = "image"
-				if paths.exists(paths.getPath(data.sprite .. "/Animation.json")) then kind = "atlas" end
+				if paths.exists(paths.getPath(data.sprite .. "/Animation.json")) then kind = "animate" end
 				table.insert(list, {kind, data.sprite})
 				if data.animations and kind ~= "atlas" then
 					for _, anim in pairs(data.animations) do
@@ -144,7 +146,7 @@ function PlayState:preload()
 						end
 					end
 				end
-				table.insert(list, {"image", ("icons/" .. data.icon) or "face"})
+				table.insert(list, {"image", "icons/" .. (data.icon or "face")})
 			end
 		end
 	end
@@ -193,7 +195,6 @@ function PlayState:enter()
 	self.lastCountdownBeats = nil
 
 	self.isDead = false
-	GameOverSubstate.resetVars()
 
 	self.usedBotPlay = ClientPrefs.data.botplayMode
 	self.downScroll = ClientPrefs.data.downScroll
@@ -201,6 +202,18 @@ function PlayState:enter()
 	self.playback = 1
 	self.timer.timeScale = 1
 	self.tween.timeScale = 1
+
+	self.camNotes = Camera() --Camera will be changed to ActorCamera once that class is done
+	self.camHUD = Camera()
+	self.camOther = Camera()
+	game.cameras.add(self.camHUD, false)
+	game.cameras.add(self.camNotes, false)
+	game.cameras.add(self.camOther, false)
+
+	self.camHUD.bgColor[4] = ClientPrefs.data.backgroundDim / 100
+
+	self.cameraOffset = Point()
+	self.ghostTime = 0
 
 	self.scripts = ScriptsHandler()
 	self.scripts:loadDirectory("data/scripts", "data/scripts/" .. songName, "songs/" .. songName)
@@ -235,14 +248,9 @@ function PlayState:enter()
 
 	self.scripts:call("create")
 
-	self.camNotes = Camera() --Camera will be changed to ActorCamera once that class is done
-	self.camHUD = Camera()
-	self.camOther = Camera()
-	game.cameras.add(self.camHUD, false)
-	game.cameras.add(self.camNotes, false)
-	game.cameras.add(self.camOther, false)
-
-	self.camHUD.bgColor[4] = ClientPrefs.data.backgroundDim / 100
+	if not self.stage then
+		self.stage = Stage(PlayState.SONG.stage)
+	end
 
 	self.stage:load()
 	self:add(self.stage)
@@ -290,7 +298,8 @@ function PlayState:enter()
 		end
 	end
 
-	local p1, p2 = PlayState.SONG.player1, PlayState.SONG.player2
+	local p1, p2 = self.boyfriend and self.boyfriend.voiceSuffix or self.SONG.player1,
+		self.dad and self.dad.voiceSuffix or PlayState.SONG.player2
 	local playerVocals = getVocals(p1 or "Player", "Player", true)
 	local enemyVocals = getVocals(p2 or "Opponent", "Opponent") or playerVocals
 
@@ -366,7 +375,7 @@ function PlayState:enter()
 	end
 
 	self.healthBar = HealthBar(self.boyfriend and self.boyfriend.icon or nil,
-		self.dad and self.dad.icon or nil)
+		self.dad and self.dad.icon or nil, skin)
 	self.healthBar:screenCenter("x").y = game.height * (self.downScroll and 0.1 or 0.9)
 	self:add(self.healthBar)
 
@@ -395,14 +404,19 @@ function PlayState:enter()
 	end
 
 	if love.system.getDevice() == "Mobile" then
-		local w, h = game.width / 4, game.height
+		local pad = ClientPrefs.data.margin
+		local w, h = (game.width - pad * 2) / 4, game.height
 
 		self.buttons = VirtualPadGroup()
+		self.pauseButton = PauseButton(game.width - 130 - ClientPrefs.data.margin, 20, skin)
+		self:add(self.pauseButton)
+		self.buttons.cameras = {self.camOther}
+		self.pauseButton.cameras = self.buttons.cameras
 
-		local left = VirtualPad("left", 0, 0, w, h, Color.PURPLE)
-		local down = VirtualPad("down", w, 0, w, h, Color.BLUE)
-		local up = VirtualPad("up", w * 2, 0, w, h, Color.LIME)
-		local right = VirtualPad("right", w * 3, 0, w, h, Color.RED)
+		local left = VirtualPad("left", pad, 0, w, h, Color.PURPLE)
+		local down = VirtualPad("down", pad + w, 0, w, h, Color.BLUE)
+		local up = VirtualPad("up", pad + w * 2, 0, w, h, Color.LIME)
+		local right = VirtualPad("right", pad + w * 3, 0, w, h, Color.RED)
 
 		self.buttons:add(left)
 		self.buttons:add(down)
@@ -415,7 +429,6 @@ function PlayState:enter()
 			releasedAlpha = 0,
 			config = {round = {0, 0}}
 		})
-		self.buttons.cameras = {self.camOther}
 	end
 	if self.buttons then self.buttons:disable() end
 
@@ -555,30 +568,23 @@ function PlayState:executeCutsceneEvent(event, onComplete)
 end
 
 function PlayState:positionNotefields()
+	local playerNF, enemyNF = self.playerNotefield, self.enemyNotefield
 	if self.middleScroll then
-		for _, notefield in pairs(self.notefields) do
-			if notefield.is then
-				notefield:screenCenter("x")
-				notefield.visible = (notefield == self.playerNotefield)
-			end
-		end
-	else
-		local total = 0
-		for _, notefield in ipairs(self.notefields) do
-			if notefield.is then total = total + 1 end
-		end
-		local baseX = 44
-		local width = game.width - baseX
-		local spacing, pos, notefield = width / total - 1, 0
+		local splitWidth = ClientPrefs.data.splitReceptors and ClientPrefs.data.splitWidth or nil
+		playerNF:setWidth(splitWidth, ClientPrefs.data.noteWidth)
+		playerNF:screenCenter("x")
 
-		for i = #self.notefields, 1, -1 do
-			notefield = self.notefields[i]
-			if notefield.is then
-				notefield.visible = true
-				notefield.x = baseX + (spacing * pos)
-				pos = pos + 1
-			end
-		end
+		enemyNF.groupScale:set(0.5, 0.5)
+		enemyNF:setPosition(game.width * 0.086, game.height * (self.downScroll and 0.1 or 1.8))
+		enemyNF:hideNotes(true)
+	else
+		local x = 44
+		enemyNF.groupScale:set(1, 1)
+		enemyNF:hideNotes(false)
+		enemyNF:setPosition(x, game.height / 2)
+
+		playerNF:setWidth()
+		playerNF.x = x + game.width / 2
 	end
 end
 
@@ -638,6 +644,7 @@ function PlayState:setPlayback(playback)
 end
 
 function PlayState:playSong(daTime)
+	self:updateDiscordRPC()
 	self:setPlayback(self.playback)
 
 	if daTime then game.sound.music.time = daTime end
@@ -659,6 +666,7 @@ end
 
 function PlayState:pauseSong()
 	game.sound.music:pause()
+	self:updateDiscordRPC(true)
 	local lastVocals
 	for _, notefield in pairs(self.notefields) do
 		if notefield.vocals and lastVocals ~= notefield.vocals then
@@ -712,6 +720,7 @@ function PlayState:cameraMovement(ox, oy, easing, time)
 	if self.camPosTween then
 		self.camPosTween:cancel()
 	end
+	camX, camY = camX - self.cameraOffset.x, camY - self.cameraOffset.y
 
 	if easing then
 		if game.camera.followLerp then
@@ -737,9 +746,6 @@ function PlayState:step(s)
 
 	if not self.startingSong then
 		self:resyncSong()
-		if Discord then
-			coroutine.wrap(PlayState.updateDiscordRPC)(self)
-		end
 	end
 
 	self.scripts:set("curStep", s)
@@ -801,7 +807,7 @@ end
 
 function PlayState:pushEvent(name, params)
 	if params == nil then
-		Toast.error("pushEvent: argument 2 must be the event parameter(s).")
+		Logger.log("error", "pushEvent: argument 2 must be the event parameter(s).")
 		return
 	end
 
@@ -854,14 +860,15 @@ function PlayState:update(dt)
 		return
 	end
 
-	if not self.paused and game.sound.music and game.sound.music:isPlaying() then
-		if math.abs(dt - (self.lastDT or 0)) > 0.078 then
-			self:playSong(math.max(0, self.lastSongTime))
+	if not self.paused and game.sound.music:isPlaying() and not self.skipResync then
+		if dt > 1 / 18 then
+			self:playSong(math.max(0, self.lastSongTime - dt / 2))
 			return
 		end
 		self.lastSongTime = game.sound.music.time
-		self.lastDT = dt
 	end
+
+	if self.ghostTime > 0 then self.ghostTime = self.ghostTime - dt end
 
 	self.timer:update(dt)
 	self.tween:update(dt)
@@ -904,6 +911,9 @@ function PlayState:update(dt)
 		end
 	end
 
+	self.scripts:call("update", dt)
+	PlayState.super.update(self, dt)
+
 	local time = PlayState.conductor.time / 1000
 	local missOffset = time - Note.safeZoneOffset / 1.25
 	for _, nf in pairs(self.notefields) do
@@ -945,8 +955,6 @@ function PlayState:update(dt)
 		end
 		::continue::
 	end
-	self.scripts:call("update", dt)
-	PlayState.super.update(self, dt)
 
 	self.camZoomMult = util.coolLerp(self.camZoomMult, 1, 3, dt * self.camZoomSpeed)
 	local zoomPlusBop = self.camZoom * self.camZoomMult
@@ -1020,8 +1028,9 @@ function PlayState:onSettingChange(category, setting)
 				self.healthBar.y = game.height * (downscroll and 0.1 or 0.9)
 				self:positionText()
 				self.downScroll = downscroll
+				self:positionNotefields()
 			end,
-			["middleScroll"] = function()
+			[{"middleScroll", "splitReceptors", "noteWidth", "splitWidth"}] = function()
 				self.middleScroll = ClientPrefs.data.middleScroll
 				self:positionNotefields()
 			end,
@@ -1060,7 +1069,6 @@ end
 
 function PlayState:goodNoteHit(note, time)
 	local rating = self:getRating(note.time, time)
-
 	self.scripts:call("goodNoteHit", note, rating)
 
 	local notefield, dir, isSustain =
@@ -1068,6 +1076,7 @@ function PlayState:goodNoteHit(note, time)
 	local event = self.scripts:event("onNoteHit",
 		Events.NoteHit(notefield, note,
 			note.character or notefield.character, rating))
+
 	if not event.cancelled and not note.wasGoodHit then
 		note.wasGoodHit = true
 
@@ -1079,20 +1088,15 @@ function PlayState:goodNoteHit(note, time)
 		local char = event.character
 		if char and not event.cancelledAnim then
 			char.waitReleaseAfterSing = not notefield.bot
-			local lastSustain, type = notefield.lastSustain, note.type
-			if type ~= "alt" then type = nil end
-			if lastSustain and not isSustain
-				and lastSustain.sustainTime > note.sustainTime then
-				local dir = lastSustain.direction
-				if char.dirAnim ~= dir then
-					char:sing(dir, type, false)
-				end
-			else
+			local type, lastsus = note.type ~= "alt" and nil or note.type, notefield.lastSustain
+			local sustime = lastsus and lastsus.sustainTime or 0
+			if (not lastsus or sustime <= 0 or note.sustainTime > sustime or
+					(time - lastsus.time) / sustime >= 0.5) then
 				char:sing(dir, type)
+				notefield.lastSustain = note
 			end
 		end
 
-		notefield.lastSustain = isSustain and note or nil
 		if not isSustain then
 			notefield:removeNote(note)
 		elseif rating.mod < 0.5 then
@@ -1117,17 +1121,16 @@ function PlayState:goodNoteHit(note, time)
 		if self.playerNotefield == notefield then
 			self.health = math.clamp(self.health + 0.023, 0, 2)
 			self.score = self.score + rating.score
-			if self.combo >= 10 and rating.resetCombo
-				and self.gf and self.gf:hasAnim("sad") then
-				self.gf:playAnim("sad", true)
-				self.gf.lastHit = notefield.time * 1000
+			if rating.resetCombo and self.gf then
+				local drop = self.gf:getDropAnim(self.combo)
+				if drop then self.gf:playAnim(drop, true, nil, true) end
 			end
 
 			self.combo = (rating.resetCombo and math.min(self.combo, 0) - 1 or
 				math.max(self.combo, 0) + 1)
 
 			if self.gf and self.gf:hasAnim("combo" .. self.combo) then
-				self.gf:playAnim("combo" .. self.combo, true)
+				self.gf:playAnim("combo" .. self.combo, false, nil, true)
 				self.gf.lastHit = notefield.time * 1000
 			end
 
@@ -1153,6 +1156,7 @@ function PlayState:goodSustainHit(note, time, fullyHeldSustain)
 			note.character or notefield.character))
 	if not event.cancelled and not note.wasGoodSustainHit then
 		note.wasGoodSustainHit = true
+		if notefield.lastSustain == note then notefield.lastSustain = nil end
 
 		if notefield == self.playerNotefield then
 			if fullScore then
@@ -1169,7 +1173,6 @@ function PlayState:goodSustainHit(note, time, fullyHeldSustain)
 			self:resetStroke(notefield, dir, fullyHeldSustain)
 		end
 		if fullScore then notefield:removeNote(note) end
-		notefield.lastSustain = nil
 	end
 
 	self.scripts:call("postGoodSustainHit", note)
@@ -1208,10 +1211,9 @@ function PlayState:miss(note, dir)
 			self.health = math.clamp(self.health - (ghostMiss and 0.04 or 0.0475), 0, 2)
 			self.score, self.misses = self.score - 100, self.misses + 1
 			if not ghostMiss then
-				if self.gf and not event.cancelledSadGF and self.combo >= 10
-					and self.gf:hasAnim("sad") then
-					self.gf:playAnim("sad", true)
-					self.gf.lastHit = notefield.time * 1000
+				if self.gf and not event.cancelledSadGF then
+					local drop = self.gf:getDropAnim(self.combo)
+					if drop then self.gf:playAnim(drop, true, nil, true) end
 				end
 				self.combo = math.min(self.combo, 0) - 1
 				self:popUpScore()
@@ -1272,7 +1274,7 @@ function PlayState:tryGameOver()
 		GameOverSubstate.endSoundName = event.endSoundName
 		GameOverSubstate.deaths = GameOverSubstate.deaths + 1
 
-		local tween = Tween.tween(self, {playback = 0}, 1.5, {
+		local tween = Tween.tween(self, {playback = 0.001}, 1, {
 			ease = Ease.quadOut,
 			onUpdate = function() self:setPlayback() end
 		})
@@ -1316,6 +1318,7 @@ end
 function PlayState:onKeyPress(key, type, scancode, isrepeat, time)
 	if self.substate and not self.persistentUpdate then return end
 	local controls = controls:getControlsFromSource(type .. ":" .. key)
+	local ghostTap = ClientPrefs.data.ghostTap and self.ghostTime <= 0
 
 	if not controls then return end
 	key = self:getKeyFromEvent(controls)
@@ -1329,26 +1332,12 @@ function PlayState:onKeyPress(key, type, scancode, isrepeat, time)
 			local hitNotes, hasSustain = notefield:getNotes(time, key)
 			local l = #hitNotes
 
-			if ClientPrefs.data.ghostTap and l > 0 then
-				for i = #notefield.recentPresses, 1, -1 do
-					if time - notefield.recentPresses[i] > 0.112 * self.playback then
-						table.remove(notefield.recentPresses, i)
-					end
-				end
-
-				for _ = 1, #notefield.recentPresses do
-					self.health = self.health - 0.01
-				end
-			elseif ClientPrefs.data.ghostTap then
-				table.insert(notefield.recentPresses, time)
-			end
-
 			if l == 0 then
 				local receptor = notefield.receptors[fixedKey]
 				if receptor then
 					receptor:play(hasSustain and "confirm" or "pressed")
 				end
-				if not hasSustain and not ClientPrefs.data.ghostTap then
+				if not hasSustain and not ghostTap then
 					self:miss(notefield, key)
 				end
 			else
@@ -1364,6 +1353,7 @@ function PlayState:onKeyPress(key, type, scancode, isrepeat, time)
 					i = i + 1
 				end
 				self:goodNoteHit(firstNote, time)
+				self.ghostTime = 0.17
 			end
 		end
 	end
@@ -1468,6 +1458,7 @@ function PlayState:endSong(skip)
 
 			util.playMenuMusic()
 		end
+		Parser.clearCache()
 	else
 		GameOverSubstate.deaths = 0
 		PlayState.canFadeInReceptors = true
@@ -1481,6 +1472,7 @@ function PlayState:endSong(skip)
 	controls:unbindPress(self.bindedKeyPress)
 	controls:unbindRelease(self.bindedKeyRelease)
 	game.sound.music.onComplete = nil
+	self.skipResync = true
 
 	self.scripts:call("postEndSong")
 end
@@ -1507,13 +1499,15 @@ function PlayState:updateDiscordRPC(paused)
 			state = PlayState.SONG.song .. ' - [' .. diff .. ']'
 		})
 	else
-		local startTimestamp = os.time(os.date("*t"))
-		local endTimestamp = (startTimestamp + game.sound.music.time) - PlayState.conductor.time / 1000
+		local startTimestamp = os.time() * 1000
+		local endTimestamp = startTimestamp + game.sound.music.duration * 1000
 		Discord.changePresence({
 			details = detailsText,
 			state = PlayState.SONG.song .. ' - [' .. diff .. ']',
-			startTimestamp = math.floor(startTimestamp),
-			endTimestamp = math.floor(endTimestamp)
+			timestamps = {
+				start = math.floor(startTimestamp),
+				["end"] = math.floor(endTimestamp)
+			}
 		})
 	end
 end
@@ -1527,6 +1521,7 @@ function PlayState:leave()
 
 	controls:unbindPress(self.bindedKeyPress)
 	controls:unbindRelease(self.bindedKeyRelease)
+	Parser.clearCache()
 
 	self.scripts:call("postLeave")
 	self.scripts:close()

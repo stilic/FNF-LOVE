@@ -5,7 +5,7 @@ function HealthBar:new(p1, p2, skin)
 
 	self.maxHealth = 2
 
-	self.bg = Sprite():loadTexture(PlayState.SONG.skin:get("healthBar", "image"))
+	self.bg = Sprite():loadTexture(skin:get("healthBar"))
 	self.bg:updateHitbox()
 
 	self.bar = Bar(self.bg.x + 4, self.bg.y + 4,
@@ -21,11 +21,12 @@ function HealthBar:new(p1, p2, skin)
 		HealthIcon(p2, false, healthPercent),
 		1
 
-	local y = self.bar.y - 75
-	self.iconP1.y, self.iconP2.y = y, y
+	local y = self.bar.y
+	self.iconP1.y = y - self.iconP1.height / 2
+	self.iconP2.y = y - self.iconP2.height / 2
 
-	self.bar.color = Color.fromHEX(0x66FF33)
-	self.bar.colorBG = Color.fromHEX(0xFF0000)
+	self.bar.color = Color.fromHEX(0xFF66FF33)
+	self.bar.color.bg = Color.fromHEX(0xFFFF0000)
 
 	self:add(self.iconP1)
 	self:add(self.iconP2)
@@ -39,9 +40,10 @@ function HealthBar:update(dt)
 	HealthBar.super.update(self, dt)
 	self.bar:setValue(self.value)
 	local swap, percent = self.bar.flipX, self.bar.percent
-	local lerpValue, healthPercent =
+	local lerpValue, healthPercent, y =
 		util.coolLerp(self.iconScale, 1, 15, dt),
-		swap and 50 - percent + 50 or percent
+		swap and 50 - percent + 50 or percent,
+		self.bar.y - 75
 	local p1, p2 = swap and self.iconP2 or self.iconP1,
 		swap and self.iconP1 or self.iconP2
 	self.iconScale, p1.health, p2.health = lerpValue, percent, percent
@@ -53,6 +55,7 @@ function HealthBar:update(dt)
 	p2.x = self.bar.x + (self.bar.width *
 		(math.remapToRange(healthPercent, 0, 100, 100,
 			0) * 0.01)) - (150 * p2.scale.x) / 2 - iconOffset * 2
+	p1.y, p2.y = y, y
 end
 
 function HealthBar:__render(camera)

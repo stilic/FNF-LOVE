@@ -15,6 +15,16 @@ local defaultScrolls = {
 	end,
 	horizontal = function(self, obj, dt, time)
 		obj.x = self:lerp(dt, obj, "x", time)
+	end,
+	mobile = function(self, obj, dt, time)
+		local spacing = (#self.members + 0) * obj.yMult
+		obj.y = spacing * obj.ID - 1
+
+		local baseX = 80 - (obj.ID * 3)
+		local slideOffset = obj.target == 0 and 20 or 0
+		local targetX = baseX + slideOffset
+
+		obj.x = self:lerp(dt, obj, "x", time or self.speed, 0, targetX)
 	end
 }
 
@@ -31,6 +41,13 @@ local defaultHovers = {
 		end
 		if obj and obj.animation:has("selected") and obj.animation.name ~= "selected" then
 			obj.animation:play("selected")
+		end
+	end,
+	mobile = function(self, obj)
+		local alpha = obj.target == 0 and 1 or nil
+		if alpha then
+			obj.alpha = alpha
+			if obj.child then obj.child.alpha = alpha end
 		end
 	end
 }
@@ -53,6 +70,8 @@ function MenuList:new(sound, cache, scroll, hover)
 	self.changeCallback = nil
 	self.selectCallback = nil
 
+	self.isMobile = (scroll == "mobile")
+
 	if cache then
 		self.__key = tostring(game.getState())
 		if MenuList.selectionCache[self.__key] then
@@ -63,10 +82,10 @@ function MenuList:new(sound, cache, scroll, hover)
 	end
 
 	self.throttles = {}
-	if self.scroll ~= "horizontal" then
+	if self.scroll ~= "horizontal" and not self.isMobile then
 		self.throttles[-1] = Throttle:make({controls.down, controls, "ui_up"})
 		self.throttles[1] = Throttle:make({controls.down, controls, "ui_down"})
-	else
+	elseif self.scroll == "horizontal" and not self.isMobile then
 		self.throttles[-1] = Throttle:make({controls.down, controls, "ui_left"})
 		self.throttles[1] = Throttle:make({controls.down, controls, "ui_right"})
 	end
@@ -79,7 +98,7 @@ function MenuList:add(obj, child, unselectable)
 	obj.target = 0
 
 	obj.yAdd = obj.yAdd or self.height * .44
-	obj.yMult = obj.yMult or 120
+	obj.yMult = obj.yMult or (self.isMobile and 20 or 120)
 	obj.xAdd = obj.xAdd or 60
 	obj.xMult = obj.xMult or 1
 	obj.spaceFactor = obj.spaceFactor or 1.25
@@ -93,9 +112,15 @@ function MenuList:add(obj, child, unselectable)
 	self:updatePositions(game.dt, 0)
 end
 
-function MenuList:lerp(dt, obj, d, time, targ)
+function MenuList:lerp(dt, obj, d, time, targ, direct)
 	targ = targ or obj.target
 	time = time or self.speed
+
+	if direct ~= nil then
+		if time <= 0 then return direct end
+		return util.coolLerp(obj[d], direct, time, dt)
+	end
+
 	local mult = d == "y" and obj.yMult or obj.xMult
 	local add = d == "y" and obj.yAdd or obj.xAdd
 	local factor = obj.spaceFactor
@@ -120,12 +145,69 @@ function MenuList:updatePositions(dt, time)
 	end
 end
 
+function MenuList:handleTouch(dt)
+	if not self.isMobile or self.lock then return end
+
+	if game.touch.anyTouchJustReleased then
+		local touch = game.touch.getTouch(0)
+		if not touch then return end
+		local tx, ty = touch.x, touch.y
+		for i, obj in ipairs(self.members) do
+			if not obj.unselectable and self:touchOverObj(tx, ty, obj) then
+				if i == self.curSelected then
+					if self.selectCallback then
+						self.selectCallback(obj)
+						self.lock = true
+					end
+				else
+					self:setSelection(i)
+				end
+				return
+			end
+		end
+	end
+end
+
+function MenuList:touchOverObj(tx, ty, obj)
+	local objLeft = obj.x - (obj.origin and obj.origin.x * obj.width or 0)
+	local objTop = obj.y - (obj.origin and obj.origin.y * obj.height or 0)
+	local objRight = objLeft + obj.width
+	local objBottom = objTop + obj.height
+
+	return tx >= objLeft and tx <= objRight and ty >= objTop and ty <= objBottom
+end
+
+function MenuList:setSelection(index, blockSound)
+	if index < 1 or index > #self.members then return end
+	if self.members[index].unselectable then return end
+
+	self.curSelected = index
+
+	for i, member in ipairs(self.members) do
+		member.target = i - self.curSelected
+	end
+
+	if self.cache then
+		MenuList.selectionCache[self.__key] = self.curSelected
+	end
+	if self.changeCallback then
+		self.changeCallback(self.curSelected, self.members[self.curSelected])
+	end
+	if #self.members > 1 and not blockSound and self.sound then
+		util.playSfx(self.sound)
+	end
+end
+
 function MenuList:update(dt)
 	MenuList.super.update(self, dt)
 
-	for i, throttle in pairs(self.throttles) do
-		if throttle:check() and not self.lock and #self.members > 1 then
-			self:changeSelection(i)
+	self:handleTouch(dt)
+
+	if not self.isMobile then
+		for i, throttle in pairs(self.throttles) do
+			if throttle:check() and not self.lock and #self.members > 1 then
+				self:changeSelection(i)
+			end
 		end
 	end
 
@@ -136,7 +218,7 @@ function MenuList:update(dt)
 		if obj.active and hoverFunc then hoverFunc(self, obj, dt) end
 	end
 
-	if not self.lock and controls:pressed("accept") and self.selectCallback
+	if not self.isMobile and not self.lock and controls:pressed("accept") and self.selectCallback
 		and #self.members > 0 then
 		self.selectCallback(self.members[self.curSelected])
 		self.lock = true

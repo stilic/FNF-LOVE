@@ -18,7 +18,7 @@ function MediaCard:setSize(width, height)
 
 	self.text.x, self.text.y = self.icon.x + self.icon.width + 10,
 		self.y + (self.height - self.text.height) / 2
-	self.text.maxWidth = (self.width - self.icon.width) - 30
+	self.text.limit = (self.width - self.icon.width) - 30
 end
 
 function MediaCard:update(dt)

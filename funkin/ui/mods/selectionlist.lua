@@ -9,10 +9,6 @@ function SelectionList:new(x, y, w, h)
 
 	self.curSelected = 1
 
-	local shit = Graphic(100, 100, 1, 1) -- do not ask
-	shit.alpha = 0.001
-	self:add(shit)
-
 	self.modsListBG = Graphic(0, 0, w, h)
 	self.modsListBG.alpha = 0.5
 	self.modsListBG.config.round = {16, 16}
@@ -25,6 +21,8 @@ function SelectionList:new(x, y, w, h)
 	self.list = SpriteGroup(0, 0)
 	self:add(self.list)
 end
+
+function SelectionList:isOnScreen() return true end
 
 function SelectionList:insertContent(content, type)
 	if #content == 0 then return end

@@ -7,6 +7,11 @@ local Parser = {chart = chart, character = character}
 local weak = {__mode = "k"}
 local weakValue = {__mode = "kv"}
 
+local chartCache = setmetatable({}, weakValue)
+local characterCache = setmetatable({}, weakValue)
+local stageCache = setmetatable({}, weakValue)
+local metaCache = setmetatable({}, weakValue)
+
 function Parser.sortByTime(a, b)
 	if a and b then
 		return a.t < b.t
@@ -16,28 +21,43 @@ end
 
 function Parser.pset(tbl, key, v) if v ~= nil then tbl[key] = v end end
 
+local function getCacheKey(...) return table.concat({...}, "@") end
+
 function Parser.getChart(name, diff)
 	name = paths.formatToSongPath(name)
-	local data, path = chart.get(name, diff and diff:lower() or "normal")
+	diff = diff and diff:lower() or "normal"
+
+	local cacheKey = getCacheKey(name, diff)
+
+	if chartCache[cacheKey] then return chartCache[cacheKey] end
+
+	local data, path = chart.get(name, diff)
 
 	if data then
 		local parser = chart.getParser(data)
-		local parsed =
-			parser.parse(data, paths.getJSON(path .. "events"),
-				paths.getJSON(path .. "meta"), diff)
+		local meta = paths.getJSON(path .. "meta")
+		local events = paths.getJSON(path .. "events")
 
-		table.sort(parsed.notes.enemy, Parser.sortByTime)
-		table.sort(parsed.notes.player, Parser.sortByTime)
-		table.sort(parsed.events, Parser.sortByTime)
+		data = parser.parse(data, events, meta, diff)
+		data.metadata = Parser.getMeta(name)
 
-		if parsed.song == nil then parsed.song = name end
+		table.sort(data.notes.enemy, Parser.sortByTime)
+		table.sort(data.notes.player, Parser.sortByTime)
+		table.sort(data.events, Parser.sortByTime)
 
-		print("[CHART PARSER] Parsed \"" .. (parsed.song or "unknown") ..
-			"\" as " .. (parser.name or "unknown"))
-		return parsed
+		if data.song == nil then data.song = name end
+
+		chartCache[cacheKey] = parsed
+
+		Logger.log("debug", "[ PARSER ] Chart \"" .. (data.song or "unknown") ..
+			"\" parsed as " .. (parser.name or "unknown"))
+		return data
 	else
-		Toast.error("[CHART PARSER] Chart not found.")
-		return Parser.getDummyChart(name, true)
+		Logger.log("warn", "[ PARSER ] Chart not found for " .. name .. ", generated a dummy one")
+		local dummy = Parser.getDummyChart(name, true)
+		dummy.metadata = Parser.getMeta(name)
+		chartCache[cacheKey] = dummy
+		return dummy
 	end
 end
 
@@ -72,6 +92,10 @@ function Parser.newTimeChange(time, bpm, beats, n, d)
 end
 
 function Parser.getMeta(name)
+	local cacheKey = paths.formatToSongPath(name)
+
+	if metaCache[cacheKey] then return metaCache[cacheKey] end
+
 	local format = paths.formatToSongPath
 	local meta = {
 		song = format(name),
@@ -85,7 +109,10 @@ function Parser.getMeta(name)
 	}
 
 	local data = paths.getJSON("songs/" .. format(name) .. "/meta")
-	if not data then return meta end
+	if not data then
+		metaCache[cacheKey] = meta
+		return meta
+	end
 	setmetatable(data, weakValue)
 
 	local function get(key, def)
@@ -106,7 +133,6 @@ function Parser.getMeta(name)
 		return info or def
 	end
 
-	meta.song = paths.formatToSongPath(get({"song", "name"}, meta.song))
 	meta.displayName = get({"displayName", "songName", "song", "name"}, meta.displayName)
 	meta.icon = get("icon", meta.icon)
 	meta.difficulties = get("difficulties", meta.difficulties)
@@ -149,20 +175,30 @@ function Parser.getMeta(name)
 		})
 	end
 
+	metaCache[cacheKey] = meta
 	return meta
 end
 
 function Parser.getCharacter(name)
+	if characterCache[name] then
+		return characterCache[name].data, characterCache[name].parser
+	end
+
 	local data = character.get(name)
 	if not data then data = character.get("bf") end
 	local parser = character.getParser(data)
 
-	return parser.parse(data, name), parser.name
+	local parsed = parser.parse(data, name)
+
+	characterCache[name] = {data = parsed, parser = parser.name}
+
+	return parsed, parser.name
 end
 
-function Parser.getDummyChar()
+function Parser.getDummyChar(name)
 	return {
 		animations = {},
+		voice_suffix = name or "",
 
 		position = {0, 0},
 		camera_points = {0, 0},
@@ -178,10 +214,17 @@ function Parser.getDummyChar()
 end
 
 function Parser.getStage(name)
+	if stageCache[name] then return stageCache[name] end
+
 	local data = stage.get(name)
 	if not data then return false end
 
-	return stage.getParser(data).parse(data)
+	local parsed = stage.getParser(data)
+	if parsed then
+		parsed = parsed.parse(data)
+		stageCache[name] = parsed
+	end
+	return parsed
 end
 
 function Parser.getDummyStage()
@@ -191,6 +234,14 @@ function Parser.getDummyStage()
 		props = {},
 		characters = {}
 	}
+end
+
+function Parser.clearCache()
+	chartCache = setmetatable({}, weakValue)
+	characterCache = setmetatable({}, weakValue)
+	stageCache = setmetatable({}, weakValue)
+	metaCache = setmetatable({}, weakValue)
+	collectgarbage("collect")
 end
 
 return Parser

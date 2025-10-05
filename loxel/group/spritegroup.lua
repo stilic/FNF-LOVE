@@ -83,10 +83,9 @@ function SpriteGroup:__drawNestGroup(members, camera, list, x2, y2, sf, force, z
 			end
 		elseif member:_canDraw() then
 			if member.__render then
-				local x, y, w, h, sx, sy, ox, oy = member:_getBoundary()
+				local x, y, w, h = member:getLocalBounds()
 
-				if member:_isOnScreen(x, y, w, h, sx, sy, ox, oy,
-						sf2 and sf2.x or 1, sf2 and sf2.y or 1, camera)
+				if member:isOnScreen(camera)
 				then
 					table.insert(list, member)
 				end

@@ -214,8 +214,8 @@ function Sprite:__render(camera)
 end
 
 function Sprite:_markDeprecated(func, new)
-	local str = "[%s] %s is deprecated, use %s."
-	Toast.deprecated(str:format(tostring(self):upper(), func, new))
+	local str = "%s is deprecated, use %s."
+	Logger.log("warn", str:format(func, new), 5)
 end
 
 function Sprite.newFrame(name, x, y, w, h, sw, sh, ox, oy, ow, oh, r)

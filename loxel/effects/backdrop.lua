@@ -71,7 +71,9 @@ function Backdrop:loadTexture(...)
 end
 
 function Backdrop:_getBoundary() return 0, 0, 0, 0, 1, 1, 0, 0 end
+
 function Backdrop:_isOnScreen() return true end
+function Backdrop:isOnScreen() return true end
 
 local round = math.round
 function Backdrop:__render(camera)

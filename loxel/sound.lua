@@ -221,7 +221,7 @@ end
 
 function Sound:set_looped(loop)
 	if not self._source then return false end
-	self._source:setLooping(loop or false)
+	self._source:setLooping(loop or self.looped or false)
 end
 
 function Sound:__index(k)

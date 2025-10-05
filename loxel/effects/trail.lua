@@ -96,10 +96,10 @@ function Trail:update(dt)
 		end
 
 		if self.framesEnabled then
-			self:cacheValue(self.__recentFrames, self.target.curFrame)
+			self:cacheValue(self.__recentFrames, self.target.animation.curAnim.frame)
 			self:cacheValue(self.__recentFlipX, self.target.flipX)
 			self:cacheValue(self.__recentFlipY, self.target.flipY)
-			self:cacheValue(self.__recentAnimations, self.target.curAnim)
+			self:cacheValue(self.__recentAnimations, self.target.animation.curAnim)
 		end
 
 		local trailSprite
@@ -120,10 +120,10 @@ function Trail:update(dt)
 			end
 
 			if self.framesEnabled then
-				trailSprite.curFrame = self.__recentFrames[i]
+				trailSprite.animation.curAnim = self.__recentAnimations[i]:clone()
+				trailSprite.animation.curAnim.frame = self.__recentFrames[i]
 				trailSprite.flipX = self.__recentFlipX[i]
 				trailSprite.flipY = self.__recentFlipY[i]
-				trailSprite.curAnim = self.__recentAnimations[i]
 			end
 
 			trailSprite.exists = true

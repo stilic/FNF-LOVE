@@ -1,4 +1,4 @@
-local discordRPC = require "lib.discordRPC"
+local DiscordActivity = require "lib.discord"
 
 ---@class Discord
 local Discord = {}
@@ -6,48 +6,37 @@ local Discord = {}
 Discord.isInitialized = false
 Discord.clientID = "1098761843956273304"
 
-local __options = {
+local _options = {
 	details = "Starting",
 	state = nil,
-	largeImageKey = "icon",
-	largeImageText = "FNF LÖVE",
-	smallImageKey = nil,
-	startTimestamp = nil,
-	endTimestamp = nil
+
+	assets = {
+		large_image = "icon",
+		large_text = "FNF LÖVE"
+	}
 }
 
-function discordRPC.ready(userId, username, discriminator, avatar)
-	print(string.format("Discord: ready (%s, %s, %s, %s)", userId, username,
-		discriminator, avatar))
-
-	discordRPC.updatePresence(__options)
-end
-
-function discordRPC.disconnected(errorCode, message)
-	print(string.format("Discord: disconnected (%d: %s)", errorCode, message))
-end
-
-function discordRPC.errored(errorCode, message)
-	print(string.format("Discord: error (%d: %s)", errorCode, message))
-end
-
 function Discord.init()
-	discordRPC.initialize(Discord.clientID, true)
+	DiscordActivity.start(Discord.clientID, true, function()
+		DiscordActivity.setActivity(_options)
+	end)
 
-	print("Discord Client initialized")
+	Logger.log("debug", "Discord Activity started")
 	Discord.isInitialized = true
 end
 
-function Discord.shutdown() discordRPC.shutdown() end
+function Discord.shutdown() DiscordActivity.shutdown() end
 
 function Discord.changePresence(options)
-	__options = options
-	__options.largeImageKey = options.largeImageKey or "icon"
-	__options.largeImageText = options.largeImageText or "FNF LÖVE"
+	if not Discord.isInitialized then return end
+	_options = options or {}
+	_options.assets = options.assets or {}
+	_options.assets.large_image = options.assets.large_image or "icon"
+	_options.assets.large_text = options.assets.large_text or "FNF LÖVE"
 
-	discordRPC.updatePresence(__options)
+	DiscordActivity.setActivity(_options)
 end
 
-function Discord.update() discordRPC.runCallbacks() end
+function Discord.update() DiscordActivity.update() end
 
 return Discord

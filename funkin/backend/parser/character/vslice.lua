@@ -7,9 +7,10 @@ function vslice.parse(data, name)
 	Parser.pset(char, "flip_x", data.flipX)
 	Parser.pset(char, "sprite", data.assetPath:gsub("shared:", ""))
 
+	char.voice_suffix = name:gsub("-[^-]*$", "")
+
 	local healthIconId = data.healthIcon and data.healthIcon.id or name
 	local isPixel = data.healthIcon and data.healthIcon.isPixel or false
-	data.healthIcon = {id = healthIconId, isPixel = isPixel}
 	Parser.pset(char, "icon", healthIconId .. (isPixel and "-pixel" or ""))
 
 	for _, anim in pairs(data.animations) do
@@ -20,7 +21,8 @@ function vslice.parse(data, name)
 
 		actualAnim = {
 			name,
-			anim.prefix or '',
+			(anim.prefix or '') .. ((data.renderType == "animateatlas" or
+				(anim.prefix or ""):endsWith("0")) and "" or "0"),
 			anim.frameIndices or {},
 			anim.fps or 24,
 			anim.looped == true,

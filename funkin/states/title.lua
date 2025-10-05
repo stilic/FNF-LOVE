@@ -221,6 +221,7 @@ function TitleState:leave()
 		return
 	end
 	self.script:call("postLeave")
+	self.script:close()
 end
 
 return TitleState

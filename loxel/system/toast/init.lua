@@ -1,4 +1,5 @@
 local Icon = loxreq "system.toast.icon"
+
 local Toast = {instances = {}, pool = {}, width = 0, height = 0}
 Toast.iconSize = 24
 Toast.iconSpace = 30
@@ -7,6 +8,17 @@ Toast.scale = 1
 Toast.showErrors = true
 Toast.showDeprecations = true
 Toast.showPrints = true
+
+local prn = print
+function print(...)
+	local v = {...}
+	for i = 1, #v do v[i] = tostring(v[i]) end
+	if love.window and love.graphics.isActive() then
+		Toast.print(table.concat(v, "    "))
+	end
+	prn(...)
+end
+Logger.print = prn
 
 function Toast.init(width, height)
 	Toast.width = width
@@ -101,13 +113,11 @@ function Toast.print(text, font)
 end
 
 function Toast.error(text, font)
-	print(text)
 	if not Toast.showErrors then return end
 	return handler(text, font, Toast.icons.error, 0x9C2C3D)
 end
 
 function Toast.deprecated(text, font)
-	print(text)
 	if not Toast.showDeprecations then return end
 	return handler(text, font, Toast.icons.deprecated, 0xC8671E)
 end

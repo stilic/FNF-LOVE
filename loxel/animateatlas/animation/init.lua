@@ -33,7 +33,7 @@ end
 function AnimateAtlasController:addFromLibrary(name, anim, symbol, framerate, looped)
 	if not self.sprite.library or not anim then return false end
 
-	symbol = symbol or self.sprite.symbol or ""
+	symbol = symbol or ""
 	local timeline = self.sprite.library:getSymbolTimeline(symbol)
 	if not timeline then return false end
 
@@ -185,6 +185,7 @@ function AnimateAtlasController:update(dt)
 		self.sprite.frame = self.curAnim:getCurrentFrameIndex()
 	else
 		local sprite = self.sprite
+		sprite.frame = sprite.frame or 1
 		local framerate = sprite.library.framerate
 		if framerate <= 0 then return end
 
@@ -192,7 +193,7 @@ function AnimateAtlasController:update(dt)
 		local frameStep = 1 / framerate
 
 		while sprite._frameTimer >= frameStep do
-			sprite.frame = self.frame + 1
+			sprite.frame = sprite.frame + 1
 			sprite._frameTimer = sprite._frameTimer - frameStep
 
 			local length = sprite.library:getTimelineLength(sprite.library:getSymbolTimeline(self.symbol))

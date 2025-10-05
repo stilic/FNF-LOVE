@@ -145,6 +145,15 @@ function ActorSprite:__render(camera)
 
 	x, y = x + ox, y + oy
 
+	if self.animation.curAnim then
+		local ax, ay = self.animation.curAnim:rotateOffset(self.angle, sx, sy)
+		x, y = x - ax, y - ay
+	end
+	if f and f.rotated then
+		ox, oy = ox - 0, oy - f.width + oy
+		rad = rad-math.pi/2
+	end
+
 	local tw, th = self.texture:getWidth(), self.texture:getHeight()
 	local fw, fh, uvx, uvy, uvw, uvh = tw, th, 0, 0, 1, 1
 	if f then

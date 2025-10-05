@@ -4,10 +4,9 @@ function PauseSubstate:new()
 	PauseSubstate.super.new(self)
 
 	self.menuItems = {"Resume", "Restart song", "Options", "Exit to menu"}
-	if #PlayState.SONG.difficulties > 1 and not cutscene then
+	if #PlayState.SONG.difficulties > 1 then
 		table.insert(self.menuItems, 3, "Change difficulty")
 	end
-	self.cutscene = cutscene
 
 	self.blockInput = false
 	self.lock = false
@@ -19,12 +18,14 @@ function PauseSubstate:new()
 	self.bg.scrollFactor:set()
 	self:add(self.bg)
 
-	self.menuList = MenuList(paths.getSound('scrollMenu'))
+	self.menuList = MenuList(paths.getSound('scrollMenu'), false,
+		love.system.getDevice() == "Mobile" and "mobile" or nil)
 	self.menuList.selectCallback = bind(self, self.selectOption)
 	self:add(self.menuList)
 
 	self.diffTextList = AtlasText(18, 18, "Change difficulty", "bold")
-	self.diffList = MenuList(paths.getSound('scrollMenu'))
+	self.diffList = MenuList(paths.getSound('scrollMenu'), false,
+		love.system.getDevice() == "Mobile" and "mobile" or nil)
 	self.diffList.selectCallback = bind(self, self.selectDifficulty)
 	self.diffList.lock, self.diffList.open = true, false
 
@@ -41,7 +42,7 @@ function PauseSubstate:new()
 
 	self.menuList:changeSelection()
 
-	local txt, font = PlayState.SONG.song or "?", paths.getFont("vcr.ttf", 32)
+	local txt, font = PlayState.SONG.metadata.displayName or "?", paths.getFont("vcr.ttf", 32)
 	self.songText = Text(0, 15, txt, font)
 	self.songText.x = game.width - self.songText:getWidth() - 28
 	self.songText.alpha = 0
@@ -78,8 +79,13 @@ function PauseSubstate:enter()
 		0.4, {ease = 'quartInOut', startDelay = 0.4})
 
 	if love.system.getDevice() == "Mobile" then
-		self.buttons = util.createButtons("udab")
+		self.buttons = util.createButtons("b")
 		self:add(self.buttons)
+
+		self.parent:remove(self.parent.pauseButton)
+		self:add(self.parent.pauseButton)
+		Tween.cancelTweensOf(self.parent.pauseButton)
+		Tween.tween(self.parent.pauseButton, {alpha = 0}, 0.6, {ease = Ease.quartOut, startDelay = 0.5});
 	end
 end
 
@@ -261,6 +267,14 @@ function PauseSubstate:loadPauseMusic()
 end
 
 function PauseSubstate:close()
+	if self.parent.pauseButton then
+		self:remove(self.parent.pauseButton)
+		self.parent:add(self.parent.pauseButton)
+		Tween.cancelTweensOf(self.parent.pauseButton)
+		Tween.tween(self.parent.pauseButton, {alpha = 1}, 0.25, {ease = Ease.quartOut});
+		Tween.tween(self.parent.pauseCircle, {alpha = 0.1}, 0.25, {ease = Ease.quartOut});
+	end
+
 	self.music:stop()
 	self.music:destroy()
 

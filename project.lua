@@ -1,3 +1,5 @@
+local os = (require"love.system").getOS()
+
 return {
 	DEBUG_MODE = true,
 
@@ -8,6 +10,9 @@ return {
 	package = "com.stilic.fnflove",
 	width = 1280,
 	height = 720,
+
+	adaptableWidth = os == "Android" or os == "iOS",
+
 	FPS = 60,
 	vSync = true,
 	company = "Stilic",

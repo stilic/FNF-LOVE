@@ -10,10 +10,11 @@ end
 local function setBackgroundColor(color)
 	love.graphics.setBackgroundColor(color or Color.BLACK)
 end
+local function setTransitions(in, out)
+end
 
--- local function setTransitions(in, out)
-
--- end
+local function setDiscordClientID(id)
+end
 
 function GlobalScripts.reload()
 	local oldScripts = {}

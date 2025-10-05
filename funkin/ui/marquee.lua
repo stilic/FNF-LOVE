@@ -2,19 +2,18 @@ local Marquee = Text:extend("Marquee")
 
 function Marquee:new(x, y, limit, velocity, content, font, color)
 	self.speed = velocity
-	self.maxWidth = limit or 200
 	self.pauseTime = 1.5
 	self.pauseTimer = self.pauseTime
 	self.scrollOffset = 0
 	self.isScrolling = false
 	self.spacing = 50
-
 	Marquee.super.new(self, x, y, content, font, color)
+	self.limit = limit or 200
 end
 
 function Marquee:update(dt)
 	Marquee.super.update(self, dt)
-	if self.width <= self.maxWidth then return end
+	if self.width <= self.limit then return end
 
 	if not self.isScrolling then
 		self.pauseTimer = self.pauseTimer - dt
@@ -51,12 +50,8 @@ function Marquee:__updateDimension()
 
 	self.width = self.font:getWidth(self.content)
 	self.height = self.font:getHeight()
-	if self.limit ~= nil or self.width ~= 0 then
-		local _, lines = self.font:getWrap(self.content, self.limit or self.width)
-		self.height = self.height * #lines
-	end
 
-	if self.width > (self.maxWidth or -1) then
+	if self.width > (self.limit or -1) then
 		self:updateCanvas()
 	end
 end
@@ -64,7 +59,7 @@ end
 function Marquee:updateCanvas()
 	if self.canvas then self.canvas:release() end
 
-	self.canvas = love.graphics.newCanvas(self.maxWidth, self.height)
+	self.canvas = love.graphics.newCanvas(self.limit, self.height)
 	self.canvas:renderTo(function()
 		love.graphics.clear(0, 0, 0, 0)
 		self:__renderText(-self.scrollOffset)
@@ -80,7 +75,7 @@ function Marquee:__renderText(x)
 	if not self.antialiasing then x = math.floor(x) end
 
 	local content, align, outline = self.content, self.alignment, self.outline
-	local width, font = self.limit or self.width, self.font
+	local width, font = self.width, self.font
 
 	love.graphics.setFont(self.font)
 
@@ -117,7 +112,7 @@ function Marquee:__renderText(x)
 end
 
 function Marquee:__render(camera)
-	if self.width <= self.maxWidth then
+	if self.width <= self.limit then
 		return Marquee.super.__render(self, camera)
 	end
 
@@ -130,10 +125,23 @@ function Marquee:__render(camera)
 	love.graphics.setShader(self.shader)
 	local mode = self.antialiasing and "linear" or "nearest"
 	self.canvas:setFilter(mode, mode)
-	-- love.graphics.setBlendMode(self.blend, "premultiplied")
+	love.graphics.setBlendMode(self.blend)
 	love.graphics.setColor(r, g, b, self.alpha)
 	love.graphics.draw(self.canvas, x, y, rad, sx, sy, ox, oy, kx, ky)
 	love.graphics.pop()
+end
+
+function Marquee:getLocalBounds()
+	local x, y = 0, 0
+	if self.offset ~= nil then x, y = x - self.offset.x, y - self.offset.y end
+	local w, h = self.limit ~= nil and self.limit or self:getWidth(), self:getHeight()
+
+	if self.outline then
+		x, y, w, h = x - self.outline.width, y - self.outline.width,
+			w + self.outline.width, h + self.outline.width
+	end
+
+	return x, y, w, h
 end
 
 function Marquee:destroy()

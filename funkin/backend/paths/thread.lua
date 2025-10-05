@@ -3,6 +3,8 @@ require "love.sound"
 require "love.audio"
 require "love.timer"
 
+local results = {}
+
 local c_task = love.thread.getChannel("async_tasks")
 local c_results = love.thread.getChannel("async_results")
 
@@ -12,6 +14,9 @@ if not s then Https = require "lib.https" end
 local function startsWith(string, prefix)
 	return string.find(string, prefix, 1, true) == 1
 end
+
+local regex_ext = "%.([^%.]+)$"
+local function ext(string) return string:match(regex_ext) or string end
 
 local function getFromURL(url, ext)
 	local success, code, response = pcall(Https.request, url)
@@ -31,7 +36,10 @@ local function load(type, path, id)
 		if startsWith(path, "http://") or startsWith(path, "https://") then
 			success, data = pcall(love.image.newImageData, getFromURL(path, "png"))
 		else
-			success, data = pcall(love.image.newImageData, path)
+			local fun = ext(path) ~= "png"
+						and love.image.newCompressedData
+						or love.image.newImageData
+			success, data = pcall(fun, path)
 		end
 	elseif type == "sound" then
 		if startsWith(path, "http://") or startsWith(path, "https://") then

@@ -1,4 +1,4 @@
-local path = "funkin.backend.modding.scripts.events."
+local path = "funkin.backend.scripts.events."
 Events = {}
 
 Events.Cancellable = require(path .. "cancellable")

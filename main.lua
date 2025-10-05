@@ -35,6 +35,8 @@ function love.mousereleased(...) game.mousereleased(...) end
 
 function love.touchpressed(...) game.touchpressed(...) end
 
+function love.touchmoved(...) game.touchmoved(...) end
+
 function love.touchreleased(...) game.touchreleased(...) end
 
 function love.update(dt)

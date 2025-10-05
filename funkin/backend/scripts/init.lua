@@ -12,7 +12,7 @@ local closedEnv = setmetatable({}, {
 -- this looks unclean i know -kaoy
 local function errformat(s, thread)
 	local i = debug.getinfo(thread or 3, "Sln")
-	Toast.error(("%s: %i: %s not allowed"):format(i.short_src, i.currentline, s))
+	Logger.log("warn", ("%i: %s not allowed"):format(i.short_src, i.currentline, s), 4)
 end
 
 local n = function() end
@@ -83,11 +83,15 @@ local blocklist, modules = {
 
 modules.require = function(path)
 	path = path:gsub("%.", "/")
+
 	if paths.exists(paths.getPath(path), "directory") and
 		paths.exists(paths.getPath(path .. "/init.lua"), "file") then
-		return Script("data/classes/" .. path .. "/init").chunk()
+		local scr = Script("data/classes/" .. path .. "/init")
+		return scr.chunk()
 	end
-	return Script("data/classes/" .. path).chunk()
+
+	local scr = Script("data/classes/" .. path)
+	return scr.chunk()
 end
 
 local mtenv = {
@@ -146,7 +150,7 @@ function Script:new(path, notFoundMsg, noLink, fullPath)
 			chunk()
 		else
 			if not self.notFoundMsg then return end
-			Toast.error("Script not found for " .. paths.getPath(p))
+			Logger.log("error", "Script not found for " .. paths.getPath(p))
 			self:close()
 			return
 		end
@@ -155,7 +159,7 @@ function Script:new(path, notFoundMsg, noLink, fullPath)
 	end)
 
 	if not s then
-		Toast.error(string.format('Failed to load %s: %s', path, err))
+		Logger.log("error", string.format('Failed to load %s: %s', path, err))
 		self:close()
 		self.errorCallback:dispatch("chunk")
 	end
@@ -210,7 +214,7 @@ function Script:call(func, ...)
 			end
 			return true
 		else
-			Toast.error(string.format('%s failed at %s: %s', self.path, func, err))
+			Logger.log("error", string.format('%s failed at %s: %s', self.path, func, err))
 			self.__failedfunc[func] = true
 			self.errorCallback:dispatch(func)
 		end

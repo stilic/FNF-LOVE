@@ -34,7 +34,7 @@ function Stage:new(name)
 	end
 
 	if noData and noScript then
-		Toast.error("No stage found for " .. name)
+		Logger.log("error", "No stage found for " .. name)
 	end
 end
 
@@ -81,7 +81,10 @@ function Stage:load()
 			local scale = data.characters[n] and data.characters[n].scale or 1
 			character.scale:mul(scale)
 			self:add(character)
+
+			character:dance()
 			if character.type == "VSlice" then
+				character:updateHitbox()
 				character.x = character.x - character.width / 2
 				character.y = character.y - character.height
 			end
@@ -117,13 +120,14 @@ function Stage:generateStage()
 					instance.animation:addByPrefix(name, anim.prefix or '', anim.frameRate or 24, anim.looped or false)
 				end
 				if anim.offsets then
-					instance.animation:get(name).offset:set(anim.offsets[1], anim.offsets[2])
+					local anima = instance.animation:get(name)
+					if anima then anima.offset:set(anim.offsets[1], anim.offsets[2]) end
 				end
 			end
 			instance:play(prop.startingAnimation or "danceLeft", true)
 		elseif prop.assetPath:sub(1, 1) == '#' then
 			instance = Graphic(prop.position[1], prop.position[2], prop.scale[1] or 1.0, prop.scale[2] or 1.0)
-			instance.color = Color.fromString(prop.assetPath)
+			instance.color = Color.fromString(prop.assetPath or Color.BLACK)
 		else
 			instance = Sprite(prop.position[1], prop.position[2], paths.getImage(path .. prop.assetPath))
 		end

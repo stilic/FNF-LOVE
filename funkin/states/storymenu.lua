@@ -331,6 +331,7 @@ function StoryMenuState:leave()
 	self.throttles = nil
 
 	self.script:call("postLeave")
+	self.script:close()
 end
 
 return StoryMenuState

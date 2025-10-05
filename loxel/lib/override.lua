@@ -188,11 +188,14 @@ function table.keys(t, includeIndices, keys)
 	return keys
 end
 
-local table_clone
-function table_clone(list, clone)
-	clone = clone or table_new(#list, 0)
-	for i, v in pairs(list) do clone[i] = type(v) == __table__ and table_clone(v) or v end
-	return clone
+local function table_clone(t, seen)
+	if type(t) ~= "table" then return t end
+	seen = seen or {}
+	if seen[t] then return seen[t] end
+	local c = table_new and table_new(#t, 0) or {}
+	seen[t] = c
+	for k, v in next, t do c[k] = type(v) == "table" and table_clone(v, seen) or v end
+	return c
 end
 
 table.clone = table_clone
@@ -270,10 +273,28 @@ end
 
 -- Gets the current device
 ---@return string -- The current device. (`Desktop` or `Mobile`)
+
+local function ischromeos()
+	local f, c, n = {
+		"/etc/lsb-release",
+		"/opt/google/chrome/chrome",
+		"/usr/share/chromeos-assets"
+	}
+	for _, p in pairs(f) do
+		c = io.open(p, "r")
+		if c then
+			n = c:read("*all")
+			c:close()
+			if n and n:match("CHROMEOS") then return true end
+		end
+	end
+	return false
+end
+
 function love.system.getDevice()
 	local os = love.system.getOS()
 	if os == "Android" or os == "iOS" then
-		return "Mobile"
+		return (not os == "iOS" and ischromeos()) and "Desktop" or "Mobile"
 	elseif os == "OS X" or os == "Windows" or os == "Linux" then
 		return "Desktop"
 	end

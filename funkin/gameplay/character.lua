@@ -40,12 +40,12 @@ function Character:new(x, y, char, isPlayer)
 
 	self.flipX = data.flip_x == true
 	self.antialiasing = ClientPrefs.data.antialiasing and data.antialiasing ~= false
+	self.voiceSuffix = data.voice_suffix or char
 
 	local atlasAdded = {}
 	if data.animations and #data.animations > 0 then
 		for _, an in pairs(data.animations) do
-			local anim, name, indices, fps, loop, offset, atlas =
-				unpack(an)
+			local anim, name, indices, fps, loop, offset, atlas = unpack(an)
 
 			if not self._animAtlas and atlas and atlas ~= "" and not atlasAdded[atlas] then
 				self.frames:addCollection(paths.getAtlas(atlas))
@@ -110,16 +110,18 @@ function Character:new(x, y, char, isPlayer)
 	self.isDanced = self.anim:has('danceLeft') and self.anim:has('danceRight')
 	self:setPosition(self.x + position.x, self.y + position.y)
 	self.type = type
-
-	self:dance()
-	if self.anim.curAnim and not self.anim.curAnim.looped then
-		self.anim:finish()
-	end
 end
 
 function Character:__animFinished(name)
+	if self.script then
+		self.script:call("onAnimFinish", name)
+	end
+
 	if self.anim:has(name .. '-loop') then self.anim:play(name .. '-loop') end
 	self.waitingFinish = false
+	if self.script then
+		self.script:call("postAnimFinish", name)
+	end
 end
 
 function Character:update(dt)
@@ -147,14 +149,38 @@ end
 
 function Character:beat(b)
 	if not self.waitingFinish and self.lastHit <= 0 and b % self.danceSpeed == 0 then
-		self:dance(self.isDanced)
+		self:dance()
 	end
 end
 
 function Character:playAnim(anim, force, frame, waitFinish)
+	local result = Script.Event_Continue
+	if self.script then
+		result = self.script:call("onPlayAnim", anim, force, frame, waitFinish) or result
+	end
+	if result == Script.Event_Cancel then return end
+
 	self.anim:play(anim, force, frame)
 	self.dirAnim = nil
 	self.waitingFinish = waitFinish == true
+
+	if self.script then
+		self.script:call("postPlayAnim", anim, force, frame, waitFinish)
+	end
+end
+
+function Character:getDropAnim(number)
+	local drop, value = nil, -1
+	for name, anim in pairs(self.anim:getList()) do
+		local dnum = name:match("^drop(%d+)$")
+		if dnum then
+			local num = tonumber(dnum)
+			if num and num <= number and num > value then
+				drop, value = anim.name, num
+			end
+		end
+	end
+	return drop
 end
 
 function Character:sing(dir, type, force)

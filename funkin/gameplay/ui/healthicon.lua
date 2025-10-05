@@ -132,7 +132,7 @@ function HealthIcon:setScale(scale)
 	else
 		self.scale:set(1, 1)
 	end
-	self:updateHitbox()
+	-- self:updateHitbox()
 end
 
 function HealthIcon:fixOffsets(width, height)

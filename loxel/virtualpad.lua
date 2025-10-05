@@ -17,6 +17,9 @@ function VirtualPad:new(key, x, y, width, height, color)
 
 	self.scrollFactor:zero()
 
+	self.onPress = Signal()
+	self.onRelease = Signal()
+
 	self.pressed = false
 	self.pressedAlpha = 1
 	self.releasedAlpha = 0.25
@@ -51,6 +54,7 @@ local function press(button, id, time)
 	button.pressed = true
 	VirtualPad._press(button.key, time or love.timer.getTime())
 	VirtualPad.active[id] = button
+	button.onPress:dispatch(button)
 end
 
 local function release(button, id, time)
@@ -58,6 +62,7 @@ local function release(button, id, time)
 	button.pressed = false
 	VirtualPad._release(button.key, time or love.timer.getTime())
 	VirtualPad.active[id] = nil
+	button.onRelease:dispatch(button)
 end
 
 local activeTouches = {}
@@ -140,6 +145,8 @@ function VirtualPad:destroy()
 			break
 		end
 	end
+	self.onPress:destroy()
+	self.onRelease:destroy()
 end
 
 function VirtualPad:check(x, y)

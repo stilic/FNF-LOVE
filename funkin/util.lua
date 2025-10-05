@@ -65,6 +65,7 @@ end
 
 function util.createButtons(scheme, width)
 	local buttons = VirtualPadGroup()
+	local pad = ClientPrefs.data.margin
 
 	local w = width or 126
 	local y = game.height - w
@@ -74,9 +75,9 @@ function util.createButtons(scheme, width)
 		scheme:find("u"), scheme:find("d"),
 		scheme:find("a"), scheme:find("b")
 
-	local lx = 0
-	local mx = l and lx + w or 0
-	local rx = l and ((u or d) and mx + w or w) or 0
+	local lx = pad
+	local mx = l and lx + w or pad
+	local rx = l and ((u or d) and mx + w or w) or pad
 
 	-- {char, name, x, y, color}
 	local conf = {
@@ -84,8 +85,8 @@ function util.createButtons(scheme, width)
 		{"r", "right", rx, y},
 		{"u", "up", mx, d and y - w or y},
 		{"d", "down", mx, y},
-		{"a", "return", game.width - w, y, Color.LIME},
-		{"b", "escape", a and (game.width - w * 2) or (game.width - w), y, Color.RED}
+		{"a", "return", game.width - w - pad, y, Color.LIME},
+		{"b", "escape", a and (game.width - pad - w * 2) or (game.width - w - pad), y, Color.RED}
 	}
 
 	for _, config in ipairs(conf) do

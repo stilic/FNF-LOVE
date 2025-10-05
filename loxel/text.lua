@@ -96,9 +96,8 @@ function Text:_canDraw()
 	return self.content and self.content ~= "" and Text.super._canDraw(self)
 end
 
-function Text:_getBoundary()
-	local abs = math.abs
-	local x, y = self.x or 0, self.y or 0
+function Text:getLocalBounds()
+	local x, y = 0, 0
 	if self.offset ~= nil then x, y = x - self.offset.x, y - self.offset.y end
 	local w, h = self.limit ~= nil and self.limit or self:getWidth(), self:getHeight()
 
@@ -107,8 +106,7 @@ function Text:_getBoundary()
 			w + self.outline.width, h + self.outline.width
 	end
 
-	return x, y, w, h, abs(self.scale.x * self.zoom.x), abs(self.scale.y * self.zoom.y),
-		self.origin.x, self.origin.y
+	return x, y, w, h
 end
 
 function Text:__render(camera)

@@ -93,7 +93,7 @@ function UserList:addUsers(name, people, i)
 		img, txt = makeCard(people[i].name, people[i].icon, i)
 		self.lastHeight = img.y + img.height + 10
 	end
-	self.bar.x, self.bar.width = txt.x - 10, txt.maxWidth + 20
+	self.bar.x, self.bar.width = txt.x - 10, txt.limit + 20
 end
 
 function UserList:changeSelection(n)

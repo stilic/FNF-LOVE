@@ -45,9 +45,6 @@ function UserCard:update(dt)
 end
 
 function UserCard:__reloadIcon(image, url, error)
-	if error then
-		return Toast.error(error)
-	end
 	if self.icon.loading ~= url then return end
 	self.icon.loading = nil
 	self.icon.angle = 0

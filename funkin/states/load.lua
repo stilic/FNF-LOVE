@@ -52,4 +52,15 @@ function LoadState:update(dt)
 	self.script:call("postUpdate", dt)
 end
 
+function LoadState:leave()
+	self.script:call("leave")
+	if self.notCreated then
+		self.script:call("postLeave")
+		return
+	end
+
+	self.script:call("postLeave")
+	self.script:close()
+end
+
 return LoadState

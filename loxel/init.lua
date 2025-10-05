@@ -6,13 +6,16 @@ require "love.window"
 loxreq "lib.override"
 
 Project = require "project"
+Logger = loxreq "system.logger"
 
 local isMobile = love.system.getDevice() == "Mobile"
 
-if Project.flags.LoxelInitWindow then
+if Project.flags.loxelInitWindow then
 	love.window.setTitle(Project.title)
 	love.window.setIcon(love.image.newImageData(Project.icon))
-	love.window.setMode(Project.width, Project.height, {fullscreen = isMobile, resizable = not isMobile, vsync = 0, usedpiscale = false})
+	love.window.setMode(Project.width, Project.height, {
+		fullscreen = isMobile, resizable = not isMobile, usedpiscale = false
+	})
 
 	if Project.bgColor then
 		love.graphics.setBackgroundColor(Project.bgColor)
@@ -32,7 +35,7 @@ local eventhandlers = {
 	gamepadpressed = function(t, j, b) if love.gamepadpressed then return love.gamepadpressed(j, b, t) end end,
 	gamepadreleased = function(t, j, b) if love.gamepadreleased then return love.gamepadreleased(j, b, t) end end,
 	touchpressed = function(t, id, x, y, dx, dy, p) return love.touchpressed(id, x, y, dx, dy, p, t) end,
-	-- touchmoved = function(t, id, x, y, dx, dy, p) return love.touchmoved(id, x, y, dx, dy, p, t) end,
+	touchmoved = function(t, id, x, y, dx, dy, p) return love.touchmoved(id, x, y, dx, dy, p, t) end,
 	touchreleased = function(t, id, x, y, dx, dy, p) return love.touchreleased(id, x, y, dx, dy, p, t) end,
 }
 
@@ -182,6 +185,35 @@ Signal = loxreq "util.signal"
 Toast = loxreq "system.toast"
 ui = loxreq "ui"
 
+local function getram()
+	local os, handle, result = jit.os
+
+	if os == "Windows" then
+		handle = io.popen('wmic computersystem get TotalPhysicalMemory /value | findstr "="')
+		if handle then
+			result = handle:read("*all")
+			handle:close()
+			local bytes = result:match("TotalPhysicalMemory=(%d+)")
+			return tonumber(bytes)
+		end
+	elseif os == "Linux" then
+		handle = io.popen("free -b | awk '/^Mem:/ {print $2}'")
+		if handle then
+			result = handle:read("*all")
+			handle:close()
+			return tonumber(result:match("%d+"))
+		end
+	elseif os == "OSX" or jit.os == "BSD" then
+		handle = io.popen("sysctl -n hw.memsize 2>/dev/null || sysctl -n hw.physmem")
+		if handle then
+			result = handle:read("*all")
+			handle:close()
+			return tonumber(result:match("%d+"))
+		end
+	end
+	return 0
+end
+
 local function temp() return true end
 local metatemp = setmetatable(table, {__index = function() return temp end})
 game = {
@@ -197,10 +229,19 @@ game = {
 
 	keys = loxreq "input.keyboard",
 	mouse = loxreq "input.mouse",
+	touch = loxreq "input.touch",
 	cameras = loxreq "managers.cameramanager",
 	sound = loxreq "managers.soundmanager",
-	save = loxreq "util.save"
+	save = loxreq "util.save",
+
+	system = {
+		arch = jit.arch,
+		os = love.system.getOS(),
+		device = love.system.getDevice(),
+		ram = getram()
+	}
 }
+
 Classic.implement(game, Group)
 Classic.implement(game.bound, Group)
 
@@ -267,9 +308,19 @@ function game.keypressed(...) game.keys.onPressed(...) end
 
 function game.keyreleased(...) game.keys.onReleased(...) end
 
-function game.touchpressed(id, x, y, dx, dy, p, time) VirtualPad.press(id, x, y, p, time) end
+function game.touchpressed(id, x, y, dx, dy, p, time)
+	VirtualPad.press(id, x, y, p, time)
+	game.touch.onPressed(id, x, y, dx, dy, p)
+end
 
-function game.touchreleased(id, x, y, dx, dy, p, time) VirtualPad.release(id, x, y, p, time) end
+function game.touchreleased(id, x, y, dx, dy, p, time)
+	VirtualPad.release(id, x, y, p, time)
+	game.touch.onReleased(id, x, y, dx, dy, p)
+end
+
+function game.touchmoved(id, x, y, dx, dy, p, time)
+	game.touch.onMoved(id, x, y, dx, dy, p)
+end
 
 function game.wheelmoved(x, y) game.mouse.wheel = y end
 
@@ -349,9 +400,16 @@ function game.update(real_dt)
 
 	game.keys.reset()
 	game.mouse.reset()
+	game.touch.reset()
 end
 
 function game.resize(w, h)
+	if Project.adaptableWidth then
+		local ratio = w / h
+		Project.width = math.floor(Project.height * ratio)
+		game.width = Project.width
+		love.window.updateMode(Project.width, Project.height)
+	end
 	Gamestate.resize(w, h)
 	for _, o in ipairs(game.bound.members) do triggerCallback(o.resize, o, w, h) end
 	for _, o in ipairs(game.members) do triggerCallback(o.resize, o, w, h) end

@@ -38,7 +38,7 @@ function ModdingUtil.getMeta(root, name)
 	local path = root .. "/" .. name .. "/meta.json"
 	local onErr = function(r)
 		r = r:gsub("^.-:%d+: ERROR: ", "")
-		Toast.error(name .. "'s JSON metadata returned an error: " .. r)
+		Logger.log("error", name .. "'s JSON metadata returned an error: " .. r)
 	end
 
 	if paths.exists(root, "directory") and paths.exists(path, "file") then

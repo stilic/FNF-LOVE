@@ -2,6 +2,7 @@ local FreeplayState = State:extend("FreeplayState")
 FreeplayState.curDifficulty = 2
 
 function FreeplayState:enter()
+	Parser.clearCache()
 	self.notCreated = false
 
 	self.script = Script("data/states/freeplay", false)
@@ -231,6 +232,7 @@ function FreeplayState:leave()
 	self.throttles = nil
 
 	self.script:call("postLeave")
+	self.script:close()
 end
 
 return FreeplayState

@@ -1,176 +1,231 @@
 local async = {debug = true}
 
-local max = math.min(1, love.system.getProcessorCount() - 2)
+local MAX_THREADS = 8
+local THREAD_TIMEOUT = 10
 local threads = {}
-local c_task = love.thread.getChannel("async_tasks")
-local c_results = love.thread.getChannel("async_results")
+local thread_times = {}
+local tasks = love.thread.getChannel("async_tasks")
+local results = love.thread.getChannel("async_results")
 
-local pending = {tasks = {}, callbacks = {}}
-local active_tasks = {}
-local stats = {queued = 0, completed = 0, active = false}
-local timer = {time = 0, timeout = 5}
+local queue = {tasks = {}, callbacks = {}}
+local active = {}
+local stats = {queued = 0, completed = 0, running = false}
 
-local function size(t)
-	local count = 0
-	for _ in pairs(t) do count = count + 1 end
-	return count
+local function count(t)
+	local n = 0
+	for _ in pairs(t) do n = n + 1 end
+	return n
 end
 
-local thread_code = love.filesystem.read("funkin/backend/paths/thread.lua")
+local function isUrl(path)
+	return path:startsWith("http://") or path:startsWith("https://")
+end
 
-local FrameCollection = loxreq "animation.frame.collection"
+local function getCachePath(path)
+	return isUrl(path) and ("online:" .. path) or path
+end
 
-stats.active, timer.time = true, 0
-local thread
-for i = 1, math.min(1, love.system.getProcessorCount() - 1) do
-	thread = love.thread.newThread(thread_code)
+local function log(msg)
+	if async.debug then Logger.log(msg) end
+end
+
+local code = love.filesystem.read("funkin/backend/paths/thread.lua")
+local function createThread()
+	if #threads >= MAX_THREADS then return false end
+	local thread = love.thread.newThread(code)
 	table.insert(threads, thread)
+	table.insert(thread_times, love.timer.getTime())
 	thread:start()
+	return true
 end
+
+local function cleanupIdleThreads()
+	local current_time = love.timer.getTime()
+	local active_count = count(active)
+
+	for i = #threads, 1, -1 do
+		local thread = threads[i]
+		local last_used = thread_times[i]
+
+		if current_time - last_used > THREAD_TIMEOUT and active_count == 0 and #queue.tasks == 0 then
+			tasks:push("exit")
+			table.remove(threads, i)
+			table.remove(thread_times, i)
+		elseif not thread:isRunning() then
+			table.remove(threads, i)
+			table.remove(thread_times, i)
+		end
+	end
+end
+
+local function ensureThreads()
+	local needed = math.min(MAX_THREADS, #queue.tasks + count(active))
+	while #threads < needed do
+		if not createThread() then break end
+	end
+
+	for i = 1, #thread_times do
+		thread_times[i] = love.timer.getTime()
+	end
+end
+
+local function processImage(data, path)
+	local image = love.graphics.newImage(data)
+	local cache = getCachePath(path)
+	paths.images[cache] = image
+	data:release()
+	return image, isUrl(path) and path or nil
+end
+
+local function processSound(data, path)
+	local cache = getCachePath(path)
+	paths.audio[cache] = data
+	return data, isUrl(path) and path or nil
+end
+
+local function processAudio(data, path)
+	local cache = getCachePath(path)
+	if isUrl(path) then
+		local source, fileData = data[1], data[2]
+		paths.audio[cache] = source
+		fileData:release()
+		return source, path
+	else
+		paths.audio[cache] = data
+		return data, nil
+	end
+end
+
+local function processText(data, path)
+	return data, path
+end
+
+local processors = {
+	image = processImage,
+	sound = processSound,
+	audio = processAudio,
+	text = processText
+}
 
 function async.processQueue()
-	while #pending.tasks > 0 do
-		local task = table.remove(pending.tasks, 1)
+	while #queue.tasks > 0 do
+		local task = table.remove(queue.tasks, 1)
 		local id = task[3]
-		active_tasks[id] = true
-		c_task:push(task)
+		active[id] = true
+		tasks:push(task)
 	end
 end
 
 function async.update(dt)
-	while true do
-		local result = c_results:pop()
-		if not result then break end
-		stats.completed = stats.completed + 1
+	cleanupIdleThreads()
 
+	while true do
+		local result = results:pop()
+		if not result then break end
+
+		stats.completed = stats.completed + 1
 		local success, data, id, type, path = unpack(result)
-		active_tasks[id] = nil
+		active[id] = nil
 
 		local dispatch, err
-		if success then
-			if type == "image" then
-				local image = love.graphics.newImage(data)
-				local cachePath = path
-				if path:startsWith("http://") or path:startsWith("https://") then
-					cachePath = "online:" .. path
-					err = path
-				end
-				paths.images[cachePath] = image
-				data:release()
-				dispatch = image
-			elseif type == "sound" then
-				local cachePath = path
-				if path:startsWith("http://") or path:startsWith("https://") then
-					cachePath = "online:" .. path
-					err = path
-				end
-				paths.audio[cachePath] = data
-				dispatch = data
-			elseif type == "audio" then
-				local cachePath = path
-				if path:startsWith("http://") or path:startsWith("https://") then
-					cachePath = "online:" .. path
-					err = path
-					local source, fileData = data[1], data[2]
-					paths.audio[cachePath] = source
-					dispatch = source
-					fileData:release()
-				else
-					paths.audio[cachePath] = data
-					dispatch = data
-				end
-			elseif type == "text" then
-				dispatch = data
-				err = path
-			end
+		if success and processors[type] then
+			dispatch, err = processors[type](data, path)
 		else
-			if async.debug then print("async loading failed for " .. path .. ": " .. data) end
+			log("async loading failed for " .. path .. ": " .. data)
 			dispatch, err = nil, data
 		end
 
-		local callbacks = pending.callbacks[id]
+		local callbacks = queue.callbacks[id]
 		if callbacks then
 			for _, callback in pairs(callbacks) do
 				callback(dispatch, err)
 			end
+			queue.callbacks[id] = nil
 		end
-		pending.callbacks[id] = nil
 	end
 end
 
 function async.queueTask(type, path, callback)
 	local id = type .. ":" .. path
 
-	if active_tasks[id] or pending.callbacks[id] then
+	if active[id] or queue.callbacks[id] then
 		if callback then
-			if not pending.callbacks[id] then
-				pending.callbacks[id] = {}
-			end
-			table.insert(pending.callbacks[id], callback)
+			queue.callbacks[id] = queue.callbacks[id] or {}
+			table.insert(queue.callbacks[id], callback)
 		end
 		return id
 	end
 
-	if #pending.tasks == 0 and size(active_tasks) == 0 then
+	if #queue.tasks == 0 and count(active) == 0 then
 		stats.queued = 0
 		stats.completed = 0
 	end
 
-	local task = {type, path, id}
-
 	if callback then
-		if not pending.callbacks[id] then
-			pending.callbacks[id] = {}
-		end
-		table.insert(pending.callbacks[id], callback)
+		queue.callbacks[id] = {callback}
 	end
 
-	table.insert(pending.tasks, task)
+	table.insert(queue.tasks, {type, path, id})
 	stats.queued = stats.queued + 1
 
+	ensureThreads()
 	async.processQueue()
 	return id
 end
 
+local function findImagePath(key)
+	local base = "images/" .. key .. "."
+	local formats = {"astc", "ktx", "dds", "png"}
+	local support = paths.compressedSupport
+
+	for _, fmt in ipairs(formats) do
+		if fmt == "png" or support[fmt] then
+			local path = paths.getPath(base .. fmt)
+			if paths.exists(path, "file") then
+				return path
+			end
+		end
+	end
+	return paths.getPath(base .. "png")
+end
+
 function async.getImage(key, callback)
-	if key:startsWith("http://") or key:startsWith("https://") then
-		local path = key
-		local obj = paths.images["online:" .. path]
+	if isUrl(key) then
+		local cache = "online:" .. key
+		local obj = paths.images[cache]
 		if obj then
 			if callback then callback(obj, key) end
 			return obj
 		end
-		async.queueTask("image", path, callback)
+		async.queueTask("image", key, callback)
 		return true
 	else
-		local path = paths.getPath("images/" .. key .. ".png")
+		local path = findImagePath(key)
 		local obj = paths.images[path]
 		if obj then
 			if callback then callback(obj) end
 			return obj
 		end
-
 		if paths.exists(path, "file") then
 			async.queueTask("image", path, callback)
 			return true
 		else
-			if async.debug then print('image not found: ' .. key) end
+			log('image not found: ' .. key)
 			if callback then callback(nil) end
 		end
 	end
-
 	return nil
 end
 
 function async.getAudio(key, stream, callback)
-	if key:startsWith("http://") or key:startsWith("https://") then
-		local path = key
-		local obj = paths.audio["online:" .. path]
+	if isUrl(key) then
+		local cache = "online:" .. key
+		local obj = paths.audio[cache]
 		if obj then
-			if callback then callback(obj, path) end
+			if callback then callback(obj, key) end
 			return obj
 		end
-		async.queueTask(stream and "audio" or "sound", path, callback)
+		async.queueTask(stream and "audio" or "sound", key, callback)
 		return true
 	else
 		local path = paths.getPath(key .. ".ogg")
@@ -179,12 +234,11 @@ function async.getAudio(key, stream, callback)
 			if callback then callback(obj) end
 			return obj
 		end
-
 		if paths.exists(path, "file") then
 			async.queueTask(stream and "audio" or "sound", path, callback)
 			return true
 		else
-			if async.debug then print('audio not found: ' .. key) end
+			log('audio not found: ' .. key)
 			if callback then callback(nil) end
 		end
 	end
@@ -192,13 +246,11 @@ function async.getAudio(key, stream, callback)
 end
 
 function async.getTextFromURL(url, callback)
-	if not url:startsWith("http://") and not url:startsWith("https://") then
-		if async.debug then print("Invalid URL: " .. url) end
+	if not isUrl(url) then
+		log("Invalid URL: " .. url)
 		if callback then callback(nil, "Invalid URL") end
 		return nil
 	end
-
-	local id = "text:" .. url
 	async.queueTask("text", url, callback)
 	return true
 end
@@ -223,19 +275,18 @@ end
 
 local function loadAtlas(key, kind, callback)
 	local imgPath = paths.getPath("images/" .. key .. ".png")
-	local dataPath = paths.getPath("images/" .. key .. (
-		kind == "sparrow" and ".xml" or ".txt"))
-
-	local cachekey = paths.getPath("images/" .. key)
-	local obj = paths.atlases[cachekey]
+	local ext = kind == "sparrow" and ".xml" or ".txt"
+	local dataPath = paths.getPath("images/" .. key .. ext)
+	local cacheKey = paths.getPath("images/" .. key)
+	local obj = paths.atlases[cacheKey]
 
 	if obj then
-		if callback then callback(obj) end; return obj
+		if callback then callback(obj) end
+		return obj
 	end
 
 	if not paths.exists(dataPath, "file") then
-		local type = kind == "sparrow" and "XML" or "TXT"
-		if async.debug then print(type .. ' file not found for atlas: ' .. key) end
+		log((kind == "sparrow" and "XML" or "TXT") .. ' file not found for atlas: ' .. key)
 		if callback then callback(nil) end
 		return nil
 	end
@@ -251,10 +302,19 @@ local function loadAtlas(key, kind, callback)
 			if callback then callback(nil) end
 			return nil
 		end
-		local name = "from" .. kind:capitalize()
-		obj = FrameCollection[name](img, data)
-		paths.atlases[cachekey] = obj
-		if callback then callback(obj) end; return obj
+
+		local data = love.filesystem.read(dataPath)
+		if not data then
+			log('failed to read ' .. (kind == "sparrow" and "XML" or "TXT") .. ' file: ' .. dataPath)
+			if callback then callback(nil) end
+			return nil
+		end
+
+		local FrameCollection = loxreq "animation.frame.collection"
+		obj = FrameCollection["from" .. kind:capitalize()](img, data)
+		paths.atlases[cacheKey] = obj
+		if callback then callback(obj) end
+		return obj
 	end
 
 	local img = paths.images[imgPath]
@@ -281,27 +341,54 @@ function async.getAtlas(key, callback)
 	return async.getPackerAtlas(key, callback)
 end
 
+function async.getAnimateAtlas(key, callback)
+	local path = paths.getPath("images/" .. key)
+	local obj = paths.animate_atlases[path]
+
+	if obj then
+		if callback then callback(obj) end
+		return obj
+	end
+
+	if paths.exists(path, "directory") then
+		local AnimateLibrary = require "funkin.backend.animatelibrary"
+		local atlas = AnimateLibrary(path)
+		atlas:loadAsync(function(loadedAtlas)
+			paths.animate_atlases[path] = loadedAtlas
+			if callback then callback(loadedAtlas) end
+		end)
+		return true
+	else
+		log('animate atlas not found: ' .. key)
+		if callback then callback(nil) end
+		return nil
+	end
+end
+
 function async.loadBatch(files)
+	local loaders = {
+		image = function(path) async.getImage(path) end,
+		sound = function(path) async.getSound(path) end,
+		audio = function(path) async.getAudio(path, true) end,
+		inst = function(path, suffix) async.getInst(path, suffix) end,
+		voices = function(path, suffix) async.getVoices(path, suffix) end,
+		animate = function(path) async.getAnimateAtlas(path) end
+	}
+
 	for _, file in ipairs(files) do
 		local type, path, suffix = unpack(file)
-		switch(type, {
-			["image"]  = function() async.getImage(path) end,
-			["sound"]  = function() async.getSound(path) end,
-			["audio"]  = function() async.getAudio(path, true) end,
-			["inst"]   = function() async.getInst(path, suffix) end,
-			["voices"] = function() async.getVoices(path, suffix) end
-		})
+		local loader = loaders[type]
+		if loader then loader(path, suffix) end
 	end
 end
 
 function async.getProgress()
-	if stats.queued == 0 then return 1 end
-	return math.min(1, stats.completed / stats.queued)
+	return stats.queued == 0 and 1 or math.min(1, stats.completed / stats.queued)
 end
 
 function async.stop()
 	for i = 1, #threads do
-		c_task:push("exit")
+		tasks:push("exit")
 	end
 
 	for i = 1, #threads do
@@ -309,6 +396,9 @@ function async.stop()
 			threads[i]:wait()
 		end
 	end
+
+	threads = {}
+	thread_times = {}
 end
 
 return async

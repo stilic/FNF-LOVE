@@ -159,7 +159,7 @@ function Camera:resize(width, height, resX, resY, force)
 		if self.canvas then self.canvas:release() end
 		self.__resolutionX, self.__resolutionY, self.canvas = resX, resY, love.graphics.newCanvas(width * resX, height * resY, {
 			format = "normal",
-			dpiscale = 1
+			dpiscale = 1,
 		})
 	end
 end

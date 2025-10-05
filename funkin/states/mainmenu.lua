@@ -212,6 +212,7 @@ function MainMenuState:leave()
 	for _, v in ipairs(self.throttles) do v:destroy() end
 
 	self.script:call("postLeave")
+	self.script:close()
 end
 
 return MainMenuState
