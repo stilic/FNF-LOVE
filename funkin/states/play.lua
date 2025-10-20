@@ -87,22 +87,24 @@ function PlayState:preload()
 	local song = paths.formatToSongPath(PlayState.SONG.song)
 	local diff, async = PlayState.songDifficulty:lower(), paths.async
 
-	local function getInst()
-		return async.getInst(song, diff) or async.getInst(song)
-	end
 	local function getVocals(suffix, fallback, skip)
-		local vocal = async.getVoices(song, suffix .. "-" .. diff) or
-			async.getVoices(song, diff) or async.getVoices(song, suffix) or
-			(fallback and async.getVoices(song, fallback) or nil) or
-			(not skip and async.getVoices(song, nil) or nil)
-		return vocal
+		local shortSuffix = suffix:match("^[^%-]*")
+		return async.getVoices(song, suffix .. "-" .. diff)
+			or async.getVoices(song, diff)
+			or async.getVoices(song, shortSuffix .. "-" .. diff)
+			or async.getVoices(song, shortSuffix)
+			or async.getVoices(song, suffix)
+			or (fallback and async.getVoices(song, fallback) or nil)
+			or (not skip and async.getVoices(song, nil) or nil)
 	end
 
 	local p1, p2 = PlayState.SONG.player1, PlayState.SONG.player2
 	local playerVocals, enemyVocals =
 		getVocals(p1 or "Player", "Player"),
 		getVocals(p2 or "Opponent", "Opponent", true)
-	getInst()
+	if not async.getInst(song, diff) then
+		async.getInst(song)
+	end
 
 	local list = {
 		skinPath("image", "ready"), skinPath("image", "set"), skinPath("image", "go"),
@@ -287,10 +289,14 @@ function PlayState:enter()
 
 	local volume = ClientPrefs.data.vocalVolume / 100
 	local function getVocals(char, fallback, n)
-		local file = (paths.getVoices(songName, char .. "-" .. difficulty) or
-				paths.getVoices(songName, difficulty) or paths.getVoices(songName, char, true)) or
-			(fallback and paths.getVoices(songName, fallback, true) or nil) or
-			(n and paths.getVoices(songName, nil))
+		local shortChar = char:match("^[^%-]*")
+		local file = (paths.getVoices(songName, char .. "-" .. difficulty)
+				or paths.getVoices(songName, shortChar .. "-" .. difficulty)
+				or paths.getVoices(songName, difficulty)
+				or paths.getVoices(songName, char, true)
+				or paths.getVoices(songName, shortChar, true))
+			or (fallback and paths.getVoices(songName, fallback, true) or nil)
+			or (n and paths.getVoices(songName, nil))
 		if file then
 			local vocal = game.sound.load(file)
 			vocal.volume, vocal.looped = volume, false
