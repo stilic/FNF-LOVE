@@ -281,7 +281,7 @@ function PlayState:enter()
 		self.stage.camZoomSpeed, self.stage.camSpeed
 
 	self.zoomRate = conductor.timeSignNum
-	self.hudZoomIntensity = 0.015 * 2
+	self.hudZoomIntensity = 0.03
 	self.camZoomIntensity = 1.015
 	self.camZoomMult = 1
 
