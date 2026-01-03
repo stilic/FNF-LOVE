@@ -181,16 +181,20 @@ function Sprite:__render(camera)
 	if f and f.texture then texture = f.texture end
 
 	local x, y, rad, sx, sy, ox, oy, kx, ky = self:setupDrawLogic(camera)
-	if f then
-		ox, oy = ox + f.offset.x, oy + f.offset.y
-	end
+
 	if self.animation.curAnim then
 		local ax, ay = self.animation.curAnim:rotateOffset(self.angle, sx, sy)
 		x, y = x - ax, y - ay
 	end
-	if f and f.rotated then
-		ox, oy = ox - 0, oy - f.width + oy
-		rad = rad-math.pi/2
+
+	if f then
+		if f.rotated then
+			rad = rad - math.pi/2
+			ox, oy = select(3, f.quad:getViewport()) - (oy + f.offset.y), ox + f.offset.x
+			sx, sy, kx, ky = sy, sx, ky, kx
+		else
+			ox, oy = ox + f.offset.x, oy + f.offset.y
+		end
 	end
 
 	if self.clipRect then

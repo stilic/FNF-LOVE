@@ -4,7 +4,8 @@ local Object = Basic:extend("Object")
 Object.showBoundary = false
 Object.defaultAntialiasing = false
 
-local floor = math.floor
+local floor, min, max = math.floor, math.min, math.max
+
 function Object:setupDrawLogic(camera, initDraw)
 	if initDraw == nil then initDraw = true end
 	local x, y, rad, sx, sy, ox, oy = self.x, self.y, math.rad(self.angle),
@@ -156,12 +157,12 @@ function Object:update(dt)
 	end
 end
 
+local abs, rad, sin, cos = math.abs, math.rad, math.fastsin, math.fastcos
 local function checkCamera(camera, ox, oy, ow, oh, sfx, sfy)
 	local x = ox - camera.scroll.x * sfx
 	local y = oy - camera.scroll.y * sfy
 	local cx, cy, cw, ch, csx, csy, cox, coy = camera:_getCameraBoundary()
 
-	local abs, rad, sin, cos = math.abs, math.rad, math.fastsin, math.fastcos
 	local hw1, hw2, hh1, hh2 = ow / 2, cw / 2, oh / 2, ch / 2
 	local rad2 = rad(camera.angle or 0)
 	local sin2, cos2 = abs(sin(rad2)), abs(cos(rad2))
@@ -195,47 +196,30 @@ end
 
 function Object:getBoundaryTransform()
 	self._transform:reset()
-
-	self._transform:translate(self.x or 0, self.y or 0)
-	if self.offset then
-		self._transform:translate(-self.offset.x, -self.offset.y)
-	end
-
-	local ox, oy = self.origin and self.origin.x or 0, self.origin and self.origin.y or 0
-	if self.angle and self.angle ~= 0 then
-		self._transform:translate(ox, oy)
-		self._transform:rotate(math.rad(self.angle))
-		self._transform:translate(-ox, -oy)
-	end
-
-	local sx = (self.scale and self.scale.x or 1) * (self.zoom and self.zoom.x or 1)
-	local sy = (self.scale and self.scale.y or 1) * (self.zoom and self.zoom.y or 1)
-	if self.flipX then sx = -sx end
-	if self.flipY then sy = -sy end
-	if sx ~= 1 or sy ~= 1 then
-		self._transform:translate(ox, oy)
-		self._transform:scale(sx, sy)
-		self._transform:translate(-ox, -oy)
-	end
-
-	if self.skew and (self.skew.x ~= 0 or self.skew.y ~= 0) then
-		self._transform:translate(ox, oy)
-		self._transform:shear(self.skew.x, self.skew.y)
-		self._transform:translate(-ox, -oy)
-	end
-
-	if self.animation and self.animation.getCurrentFrame then
-		local frame = self.animation:getCurrentFrame()
-		if frame and frame.offset then
-			self._transform:translate(-frame.offset.x, -frame.offset.y)
-		end
-	end
+	local x, y = self.x, self.y
+	local ox, oy, offx, offy = self.origin.x, self.origin.y, self.offset.x, self.offset.y
+	local ang, sx, sy = math.rad(self.angle), self.scale.x * self.zoom.x, self.scale.y * self.zoom.y
+	local kx, ky = self.skew.x, self.skew.y
+	if self.flipX then sx = -sx end; if self.flipY then sy = -sy end
 
 	if self.animation and self.animation.curAnim then
-		local ax, ay = self.animation.curAnim:rotateOffset(self.angle or 0)
-		self._transform:translate(-ax, -ay)
+		local ax, ay = self.animation.curAnim:rotateOffset(self.angle, sx, sy)
+		x, y = x - ax, y - ay
 	end
+	local dx, dy = x + ox - offx, y + oy - offy
 
+	local frame = self.animation and self.animation:getCurrentFrame()
+	local dox, doy = ox, oy
+	if frame and type(frame) == "table" then
+		local fox, foy = frame.offset and frame.offset.x or 0, frame.offset and frame.offset.y or 0
+		if frame.rotated then
+			ang, sx, sy, kx, ky = ang - math.pi / 2, sy, sx, ky, kx
+			dox, doy = select(3, frame.quad:getViewport()) - (oy + foy), ox + fox
+		else
+			dox, doy = ox + fox, oy + foy
+		end
+	end
+	self._transform:translate(dx, dy):rotate(ang):scale(sx, sy):shear(kx, ky):translate(-dox, -doy)
 	return self._transform
 end
 
@@ -249,7 +233,7 @@ function Object:getLocalBounds()
 	end
 	if self.animation and self.animation.getCurrentFrame then
 		local frame = self.animation:getCurrentFrame()
-		if frame and frame.quad then
+		if frame and type(frame) ~= "number" and frame.quad then
 			local _, _, qw, qh = frame.quad:getViewport()
 			w, h = qw, qh
 		end
@@ -261,19 +245,12 @@ function Object:getLocalBounds()
 end
 
 function Object:getWorldBounds()
-	local lx, ly, lw, lh = self:getLocalBounds()
-	local transform = self:getBoundaryTransform()
-
-	local c1x, c1y = transform:transformPoint(lx, ly)
-	local c2x, c2y = transform:transformPoint(lx + lw, ly)
-	local c3x, c3y = transform:transformPoint(lx, ly + lh)
-	local c4x, c4y = transform:transformPoint(lx + lw, ly + lh)
-
-	local minX = math.min(c1x, c2x, c3x, c4x)
-	local minY = math.min(c1y, c2y, c3y, c4y)
-	local maxX = math.max(c1x, c2x, c3x, c4x)
-	local maxY = math.max(c1y, c2y, c3y, c4y)
-
+	local t, lx, ly, lw, lh = self:getBoundaryTransform(), self:getLocalBounds()
+	local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+	for i = 0, 3 do
+		local x, y = t:transformPoint(lx + (i % 2) * lw, ly + floor(i / 2) * lh)
+		minX, maxX, minY, maxY = min(minX, x), max(maxX, x), min(minY, y), max(maxY, y)
+	end
 	return minX, minY, maxX - minX, maxY - minY
 end
 
