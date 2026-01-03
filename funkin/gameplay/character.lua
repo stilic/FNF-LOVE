@@ -186,13 +186,17 @@ end
 function Character:sing(dir, type, force)
 	local anim = "sing" .. Character.directions[dir + 1]:upper()
 	if type then
-		local altAnim = anim .. (type == "miss" and type or "-" .. type)
-		if self.anim:has(altAnim) then anim = altAnim end
+		anim = anim .. (type == "miss" and type or "-" .. type)
 	end
-	self:playAnim(anim, force ~= false)
+	if self.anim:has(anim) then
+		self:playAnim(anim, force ~= false)
+		self.dirAnim = dir
+	else
+		self.dirAnim = nil
+	end
 
-	self.dirAnim = type == "miss" and nil or dir
 	self.lastHit = PlayState.conductor.time
+
 	if self.isDanced then
 		self.danced = anim:startsWith("singLEFT")
 		if anim == "singUP" or anim == "singDOWN" then
