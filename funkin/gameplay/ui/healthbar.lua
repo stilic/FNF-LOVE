@@ -28,8 +28,8 @@ function HealthBar:new(p1, p2, skin)
 	self.bar.color = Color.fromHEX(0xFF66FF33)
 	self.bar.color.bg = Color.fromHEX(0xFFFF0000)
 
-	self:add(self.iconP1)
 	self:add(self.iconP2)
+	self:add(self.iconP1)
 
 	self.value = 1
 	self.bar:setValue(1)
