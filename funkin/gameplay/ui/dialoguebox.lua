@@ -1,3 +1,5 @@
+-- TODO rewrite this. again - kaoy
+
 local DialogueBox = SpriteGroup:extend("DialogueBox")
 
 local function dispatchAnims(spr, data)

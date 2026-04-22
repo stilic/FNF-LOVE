@@ -6,7 +6,7 @@
   "playData": {
     "stage": "phillyStreets",
     "characters": {
-      "player": "pico",
+      "player": "pico-playable",
       "girlfriend": "nene",
       "opponent": "darnell"
     },

@@ -1,199 +1,213 @@
 local Matrix = loxreq "animateatlas.matrix"
-local AnimateAtlasBoundary = Classic:extend("AnimateAtlasBoundary")
--- meant to be used with Class:implement!
+local Boundary = Classic:extend("Boundary")
 
-local calcTL, calcKF, calcAS, calcS
+local m_pi_2 = math.pi / 2
 
-calcTL = function(self, timeline, frame, matrix, bounds)
-	local optimized = timeline.L ~= nil
-	local timelineLayers = timeline[optimized and "L" or "LAYERS"]
-	local foundSprites = false
+local tfStack = {}
+local tfIndex = 0
 
-	for i = #timelineLayers, 1, -1 do
-		local layer = timelineLayers[i]
-		if layer[optimized and "LT" or "Layer_type"] then
-			goto continue
-		end
-
-		local keyframes = layer[optimized and "FR" or "Frames"]
-
-		local activeKeyframe = nil
-		for j = 1, #keyframes do
-			local kf = keyframes[j]
-			local index = kf[optimized and "I" or "index"]
-			local duration = kf[optimized and "DU" or "duration"]
-
-			if frame >= index and frame < index + duration then
-				activeKeyframe = kf
-				break
-			end
-		end
-
-		if activeKeyframe then
-			if calcKF(self, activeKeyframe, frame, matrix, optimized, bounds) then
-				foundSprites = true
-			end
-		end
-
-		::continue::
+local function pushTransform()
+	tfIndex = tfIndex + 1
+	if not tfStack[tfIndex] then
+		tfStack[tfIndex] = love.math.newTransform()
 	end
-
-	return foundSprites
+	return tfStack[tfIndex]
 end
 
-calcKF = function(self, keyframe, frame, matrix, optimized, bounds)
-	local elements = keyframe[optimized and "E" or "elements"]
-	local foundSprites = false
-	local index = keyframe[optimized and "I" or "index"]
-
-	for k = 1, #elements do
-		local element = elements[k]
-		local symbol = element[optimized and "SI" or "SYMBOL_Instance"]
-		local atlas = element[optimized and "ASI" or "ATLAS_SPRITE_Instance"]
-
-		if symbol then
-			if calcS(self, symbol, frame, index, matrix, optimized, bounds) then
-				foundSprites = true
-			end
-		elseif atlas then
-			if calcAS(self, atlas, matrix, optimized, bounds) then
-				foundSprites = true
-			end
-		end
-	end
-
-	return foundSprites
+local function popTransform()
+	tfIndex = tfIndex - 1
 end
 
-calcS = function(self, symbol, frame, index, matrix, optimized, bounds)
-	local symbolName = symbol[optimized and "SN" or "SYMBOL_name"]
-	local firstFrame = symbol[optimized and "FF" or "firstFrame"] or 0
+local processTimeline, processLayer, processKeyframe, processElement
 
-	local frameIndex = firstFrame + (frame - index)
-	local symbolType = symbol[optimized and "ST" or "symbolType"]
-	if symbolType == "movieclip" or symbolType == "MC" then
-		frameIndex = 0
+local lib_timelines, lib_layers, lib_frames, lib_elements
+local lib_mat2ds, lib_mat3ds, lib_id_to_string, lib_sprite_quads
+local lib_symbol_timelines, lib_sprite_rotated, lib_sprite_w
+
+processElement = function(elem, frame, matrix, bounds, lib)
+	local typ = elem.type
+	local name_id = elem.name_id
+	local transform_id = elem.transform_id
+	local is_3d = elem.is_3d
+
+	local elemMatrix = pushTransform()
+	if is_3d == 1 then
+		elemMatrix:setMatrix(Matrix._3Dstruct(lib_mat3ds[transform_id]))
+	else
+		elemMatrix:setMatrix(Matrix._2Dstruct(lib_mat2ds[transform_id]))
 	end
 
-	local loopMode = symbol[optimized and "LP" or "loop"]
+	local combined = pushTransform()
+	combined:setMatrix(matrix:getMatrix())
+	combined:apply(elemMatrix)
 
-	local libraries = self.library.libraries
-	local library = libraries[symbolName]
-	if not library then return false end
+	if typ == 0 then   -- symbol
+		local symbolName = lib_id_to_string[name_id]
+		local symbolTL = lib_symbol_timelines and lib_symbol_timelines[symbolName]
+		if symbolTL then
+			local firstFrame = elem.first_frame
+			local frameIndex = firstFrame + frame
 
-	local symbolTimeline = library.data
-	local length = self.library:getTimelineLength(symbolTimeline)
+			local symLength = lib_timelines[symbolTL].length
+			local loopMode = elem.loop_mode
+			if loopMode == 0 then   -- loop
+				if frameIndex < 0 then
+					frameIndex = symLength - 1
+				else
+					frameIndex = frameIndex % symLength
+				end
+			elseif loopMode == 1 then   -- play once
+				frameIndex = math.max(0, math.min(frameIndex, symLength - 1))
+			elseif loopMode == 2 then   -- single frame
+				frameIndex = firstFrame
+			end
 
-	if loopMode == "loop" or loopMode == "LP" then
-		if frameIndex < 0 then
-			frameIndex = length - 1
-		elseif frameIndex >= length then
-			frameIndex = frameIndex % length
+			processTimeline(symbolTL, frameIndex, combined, bounds, lib)
 		end
-	elseif loopMode == "playonce" or loopMode == "PO" then
-		frameIndex = math.max(0, math.min(frameIndex, length - 1))
-	elseif loopMode == "singleframe" or loopMode == "SF" then
-		frameIndex = firstFrame
+	else   -- atlas sprite
+		local quad = lib_sprite_quads[name_id]
+		if quad then
+			if lib_sprite_rotated[name_id] then
+				combined:translate(0, lib_sprite_w[name_id])
+				combined:rotate(-m_pi_2)
+			end
+
+			local _, _, w, h = quad:getViewport()
+			local x1, y1 = combined:transformPoint(0, 0)
+			local x2, y2 = combined:transformPoint(w, 0)
+			local x3, y3 = combined:transformPoint(w, h)
+			local x4, y4 = combined:transformPoint(0, h)
+
+			bounds.minX = math.min(bounds.minX, x1, x2, x3, x4)
+			bounds.minY = math.min(bounds.minY, y1, y2, y3, y4)
+			bounds.maxX = math.max(bounds.maxX, x1, x2, x3, x4)
+			bounds.maxY = math.max(bounds.maxY, y1, y2, y3, y4)
+		end
 	end
 
-	local is3DMatrix = symbol[optimized and "M3D" or "Matrix3D"] ~= nil
-	local symbolMatrix = love.math.newTransform()
-	local symbolMatrixRaw = is3DMatrix and symbol[optimized and "M3D" or "Matrix3D"] or symbol[optimized and "MX" or "Matrix"]
-	symbolMatrix:setMatrix((is3DMatrix and Matrix._3D or Matrix._2D)(symbolMatrixRaw, optimized))
-
-	local combinedMatrix = matrix:clone():apply(symbolMatrix)
-	return calcTL(self, symbolTimeline, frameIndex, combinedMatrix, bounds)
+	popTransform()   -- combined
+	popTransform()   -- elem matrix
 end
 
-calcAS = function(self, atlasSprite, matrix, optimized, bounds)
-	local name = atlasSprite[optimized and "N" or "name"]
+processKeyframe = function(frameStruct, frame, matrix, bounds, lib)
+	local index = frameStruct.index
+	local duration = frameStruct.duration
+	if frame < index or frame >= index + duration then return false end
 
-	local sprite = nil
-	local spritemaps = self.library.spritemaps
-	for l = 1, #spritemaps do
-		local spritemap = spritemaps[l]
-		local sprites = spritemap.data.ATLAS.SPRITES
-		for z = 1, #sprites do
-			local s = sprites[z].SPRITE
-			if s.name == name then
-				sprite = s
-				goto found_sprite
-			end
-		end
+	local elements_start = frameStruct.elements_start
+	local elements_count = frameStruct.elements_count
+	for k = 0, elements_count - 1 do
+		local elem = lib_elements[elements_start + k]
+		processElement(elem, frame - index, matrix, bounds, lib)
 	end
-
-	::found_sprite::
-	if not sprite then return false end
-
-	local is3DMatrix = atlasSprite[optimized and "M3D" or "Matrix3D"] ~= nil
-	local spriteMatrixRaw = is3DMatrix and atlasSprite[optimized and "M3D" or "Matrix3D"] or atlasSprite[optimized and "MX" or "Matrix"]
-	local spriteMatrix = love.math.newTransform()
-	spriteMatrix:setMatrix((is3DMatrix and Matrix._3D or Matrix._2D)(spriteMatrixRaw, optimized))
-
-	local drawMatrix = matrix:clone():apply(spriteMatrix)
-	local w, h = sprite.w, sprite.h
-
-	if sprite.rotated then
-		drawMatrix:translate(0, w)
-		drawMatrix:rotate(-math.pi/2)
-		w, h = h, w
-	end
-	local x1, y1 = drawMatrix:transformPoint(0, 0)
-	local x2, y2 = drawMatrix:transformPoint(w, 0)
-	local x3, y3 = drawMatrix:transformPoint(w, h)
-	local x4, y4 = drawMatrix:transformPoint(0, h)
-
-	local minX = math.min(x1, x2, x3, x4)
-	local minY = math.min(y1, y2, y3, y4)
-	local maxX = math.max(x1, x2, x3, x4)
-	local maxY = math.max(y1, y2, y3, y4)
-
-	bounds.minX = math.min(bounds.minX, minX)
-	bounds.minY = math.min(bounds.minY, minY)
-	bounds.maxX = math.max(bounds.maxX, maxX)
-	bounds.maxY = math.max(bounds.maxY, maxY)
-
 	return true
 end
 
-function AnimateAtlasBoundary:getBoundTopLeft()
-	if not self.library then return 0, 0 end
-
-	local timeline = self.library:getSymbolTimeline(self.symbol)
-	if timeline.data then
-		timeline = timeline.data[timeline.optimized and "AN" or "ANIMATION"][timeline.optimized and "TL" or "TIMELINE"]
+processLayer = function(layer, frame, matrix, bounds, lib)
+	local frames_start = layer.frames_start
+	local frames_count = layer.frames_count
+	for j = 0, frames_count - 1 do
+		local f = lib_frames[frames_start + j]
+		if processKeyframe(f, frame, matrix, bounds, lib) then
+			break
+		end
 	end
-
-	local bounds = {minX = math.huge, minY = math.huge, maxX = -math.huge, maxY = -math.huge}
-	local identity = love.math.newTransform()
-
-	local foundSprites = calcTL(self, timeline, self.frame, identity, bounds)
-
-	if foundSprites and bounds.minX ~= math.huge and bounds.minY ~= math.huge then
-		return bounds.minX, bounds.minY
-	end
-	return 0, 0
 end
 
-function AnimateAtlasBoundary:getBoundDimensions()
-	local width, height = 0, 0
+processTimeline = function(tl_idx, frame, matrix, bounds, lib)
+	local tl = lib_timelines[tl_idx]
+	local layers_start = tl.layers_start
+	local layers_count = tl.layers_count
 
-	local timeline = self.library:getSymbolTimeline(self.symbol)
-	if timeline.data then
-		timeline = timeline.data[timeline.optimized and "AN" or "ANIMATION"][timeline.optimized and "TL" or "TIMELINE"]
+	for i = layers_count - 1, 0, -1 do
+		local layer = lib_layers[layers_start + i]
+		if layer.layer_type == 0 then
+			processLayer(layer, frame, matrix, bounds, lib)
+		end
 	end
-
-	local bounds = {minX = math.huge, minY = math.huge, maxX = -math.huge, maxY = -math.huge}
-	local identity = love.math.newTransform()
-
-	local foundSprites = calcTL(self, timeline, self.frame, identity, bounds)
-
-	if foundSprites and bounds.minX ~= math.huge and bounds.maxX ~= -math.huge then
-		width = math.max(0, bounds.maxX - bounds.minX)
-		height = math.max(0, bounds.maxY - bounds.minY)
-	end
-
-	return width, height
 end
 
-return AnimateAtlasBoundary
+function Boundary:calculateFrameBounds(frame)
+	local iFrame = math.floor(frame)
+	local symbol = self.symbol
+
+	if not self._boundsCache then self._boundsCache = {} end
+	if not self._boundsCache[symbol] then
+		self._boundsCache[symbol] = {
+			valid = {}, minX = {}, minY = {}, maxX = {}, maxY = {}
+		}
+	end
+
+	local cache = self._boundsCache[symbol]
+	if cache.valid[iFrame] ~= nil then
+		if cache.valid[iFrame] then
+			return cache.minX[iFrame], cache.minY[iFrame],
+			       cache.maxX[iFrame] - cache.minX[iFrame],
+			       cache.maxY[iFrame] - cache.minY[iFrame]
+		else
+			return 0,0,0,0
+		end
+	end
+
+	local lib = self.library
+	if not lib then return 0,0,0,0 end
+
+	lib_timelines = lib.timelines
+	lib_layers = lib.layers
+	lib_frames = lib.frames
+	lib_elements = lib.elements
+	lib_mat2ds = lib.mat2ds
+	lib_mat3ds = lib.mat3ds
+	lib_id_to_string = lib.id_to_string
+	lib_sprite_quads = lib.sprite_quads
+	lib_symbol_timelines = lib.symbol_timelines
+	lib_sprite_rotated = lib.sprite_rotated
+	lib_sprite_w = lib.sprite_w
+
+	local tl_idx = lib_symbol_timelines and lib_symbol_timelines[symbol] or lib.main_timeline_id
+	if not tl_idx then return 0,0,0,0 end
+
+	local b = { minX = math.huge, minY = math.huge, maxX = -math.huge, maxY = -math.huge }
+
+	local identity = pushTransform()
+	identity:setTransformation(0,0, 0, 1,1, 0,0)
+
+	processTimeline(tl_idx, iFrame, identity, b, lib)
+
+	popTransform()
+
+	if b.minX ~= math.huge and b.maxX ~= -math.huge then
+		cache.minX[iFrame] = b.minX
+		cache.minY[iFrame] = b.minY
+		cache.maxX[iFrame] = b.maxX
+		cache.maxY[iFrame] = b.maxY
+		cache.valid[iFrame] = true
+		return b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY
+	end
+
+	cache.valid[iFrame] = false
+	return 0,0,0,0
+end
+
+function Boundary:precalculateBounds()
+	local lib = self.library
+	if not lib then return end
+	local tl_idx = lib.symbol_timelines and lib.symbol_timelines[self.symbol] or lib.main_timeline_id
+	if not tl_idx then return end
+	local length = lib.timelines[tl_idx].length
+	for i = 0, length - 1 do
+		self:calculateFrameBounds(i)
+	end
+end
+
+function Boundary:getBoundTopLeft()
+	local x, y = self:calculateFrameBounds(self.frame)
+	return x, y
+end
+
+function Boundary:getBoundDimensions()
+	local _, _, w, h = self:calculateFrameBounds(self.frame)
+	return w, h
+end
+
+return Boundary

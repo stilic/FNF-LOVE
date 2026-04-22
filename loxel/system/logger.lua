@@ -1,10 +1,10 @@
 local Logger = {}
 
 Logger.levels = {
-	DEBUG = {color = "blue",   prefix = "[DEBUG]"},
-	INFO  = {color = "green",  prefix = "[INFO]"},
-	WARN  = {color = "yellow", prefix = "[WARN]"},
-	ERROR = {color = "red",    prefix = "[ERROR]"}
+	DEBUG = {color = "blue",   prefix = "[  DEBUG  ]"},
+	INFO  = {color = "green",  prefix = "[  INFO   ]"},
+	WARN  = {color = "yellow", prefix = "[  WARN   ]"},
+	ERROR = {color = "red",    prefix = "[  ERROR  ]"}
 }
 
 local function getPath(l)
@@ -39,8 +39,8 @@ function Logger.log(level, str, l)
 					 info.color == "green" and "32" or
 					 info.color == "yellow" and "33" or "94"
 
-		Logger.print(string.format("\27[%sm[  %s  ] [  %s  ]\27[0m %s",
-			code, level:upper(), path, str))
+		print(string.format("\27[%sm%s [  %s  ]\27[0m %s",
+			code, info.prefix, path, str))
 
 		if level == "error" and Toast.showErrors then
 			Toast.error(path .. ": " .. str)

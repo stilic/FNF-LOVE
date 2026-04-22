@@ -1,22 +1,70 @@
 {
-	"animations": [
-		["idle", "monster idle", [], 24, false, [3, 0]],
-		["singUP", "monster up note", [], 24, false, [-20, 94]],
-		["singLEFT", "Monster left note", [], 24, false, [-30, 20]],
-		["singRIGHT", "Monster Right note", [], 24, false, [-51, 30]],
-		["singDOWN", "monster down", [], 24, false, [-50, -80]],
-		["idle-loop", "monster idle", [12, 13, 14], 24, true, [3, 0]],
-		["singLEFT-loop", "Monster left note", [17, 18, 19], 24, true, [-30, 20]],
-		["singUP-loop", "monster up note", [21, 22, 23], 24, true, [0, 0]],
-		["singRIGHT-loop", "Monster Right note", [12, 13, 14], 24, true, [-51, 30]],
-		["singDOWN-loop", "monster down", [27, 28, 29], 24, true, [-50, -80]]
-	],
-	"position": [0, 100],
-	"camera_points": [0, 0],
-	"flip_x": false,
-	"icon": "monster",
-	"sprite": "characters/Monster_Assets",
-	"antialiasing": true,
-	"sing_duration": 8,
-	"scale": 1
+  "version": "1.0.0",
+  "name": "Monster",
+  "assetPath": "characters/Monster",
+  "offsets": [0, 80],
+  "cameraOffsets": [18, -100],
+  "renderType": "animateatlas",
+  "animations": [
+    {
+      "name": "idle",
+      "prefix": "idle",
+      "offsets": [0, 0]
+    },
+    {
+      "name": "idle-hold",
+      "prefix": "idle",
+      "looped": true,
+      "frameIndices": [11, 12, 13, 14],
+      "offsets": [0, 0]
+    },
+    {
+      "name": "singLEFT",
+      "prefix": "right"
+    },
+    {
+      "name": "singLEFT-hold",
+      "prefix": "right",
+      "looped": true,
+      "frameIndices": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    },
+    {
+      "name": "singDOWN",
+      "prefix": "down"
+    },
+    {
+      "name": "singDOWN-hold",
+      "prefix": "down",
+      "looped": true,
+      "frameIndices": [
+        2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+        22, 23, 24, 25, 26, 27, 28, 29
+      ]
+    },
+    {
+      "name": "singUP",
+      "prefix": "up"
+    },
+    {
+      "name": "singUP-hold",
+      "prefix": "up",
+      "looped": true,
+      "frameIndices": [
+        2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+        22, 23
+      ]
+    },
+    {
+      "name": "singRIGHT",
+      "prefix": "left"
+    },
+    {
+      "name": "singRIGHT-hold",
+      "prefix": "left",
+      "looped": true,
+      "frameIndices": [
+        2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+      ]
+    }
+  ]
 }

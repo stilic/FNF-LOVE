@@ -1,6 +1,5 @@
 ---@class Basic:Classic
 local Basic = Classic:extend("Basic")
-Basic.checkCollision = checkCollision
 
 function Basic:new()
 	self.active = true
@@ -26,39 +25,32 @@ end
 function Basic:destroy()
 	self.exists = false
 	self.cameras = nil
-
-	self.__mode = "kv"
-end
-
-function Basic:_getBoundary()
-	return
 end
 
 function Basic:isOnScreen(cameras)
 	return true
 end
 
-function Basic:_canDraw()
-	return self.__render and self.visible and self.exists
-end
-
 function Basic:canDraw()
-	return self:_canDraw() and self:isOnScreen(self.cameras or Camera.__defaultCameras)
+	return self.exists and self.visible and self.__render
 end
 
 function Basic:draw()
-	if self:_canDraw() then
-		for _, c in pairs(self.cameras or Camera.__defaultCameras) do
-			if c.visible and c.exists and not c.freezed and self:isOnScreen(c) then
-				table.insert(c.__renderQueue, self)
-				table.insert(self.__cameraQueue, c)
-			end
+	if not self:canDraw() then return end
+
+	local willRender = false
+	for _, c in ipairs(self.cameras or Camera.__defaultCameras) do
+		if c.visible and c.exists and not c.freezed and self:isOnScreen(c) then
+			table.insert(c.__renderQueue, self)
+			table.insert(self.__cameraQueue, c)
+			willRender = true
 		end
 	end
+	if self.__preRender then self:__preRender(willRender) end
 end
 
 function Basic:cancelDraw()
-	for i, c in pairs(self.__cameraQueue) do
+	for i, c in ipairs(self.__cameraQueue) do
 		for i = #c.__renderQueue, 1, -1 do
 			if c.__renderQueue[i] == self then
 				table.remove(c.__renderQueue, i)
@@ -67,14 +59,6 @@ function Basic:cancelDraw()
 		end
 		self.__cameraQueue[i] = nil
 	end
-end
-
-function Basic.indexSetter(self, k, v)
-	
-end
-
-function Basic.indexGetter(self, k)
-	
 end
 
 --function Basic:enter(group) end

@@ -1,9 +1,6 @@
 require "love.image"
 require "love.sound"
 require "love.audio"
-require "love.timer"
-
-local results = {}
 
 local c_task = love.thread.getChannel("async_tasks")
 local c_results = love.thread.getChannel("async_results")
@@ -21,11 +18,12 @@ local function ext(string) return string:match(regex_ext) or string end
 local function getFromURL(url, ext)
 	local success, code, response = pcall(Https.request, url)
 	if not success or code ~= 200 then
-		-- error("failed to fetch image: " .. tostring(code))
-		return
+		return false, "failed to fetch image: " .. tostring(code)
 	end
 
-	local random = "temp" .. string.format("%04d", math.random(1, 9999)) .. "." .. ext
+	local pointer = tostring({}):match("0x[%x]+") or tostring(math.random(100000, 999999))
+	local time_id = tostring(os.clock()):gsub("%.", "")
+	local random = "temp_" .. pointer .. "_" .. time_id .. "." .. ext
 	local filedata = love.filesystem.newFileData(response, random)
 	return filedata
 end
@@ -66,6 +64,7 @@ local function load(type, path, id)
 			success, data = false, "Text loading requires URL"
 		end
 	end
+
 	if not success then
 		return {false, tostring(data or ("missing type: " .. type)), id, type, path}
 	end
@@ -73,18 +72,16 @@ local function load(type, path, id)
 end
 
 while true do
-	local task = c_task:demand()
-	if task == "exit" then
-		collectgarbage()
+	local taskMsg = c_task:demand()
+
+	if taskMsg == "exit" then
 		collectgarbage()
 		break
 	end
 
-	local type, task, id = unpack(task)
-	if task then
-		c_results:push(load(type, task, id))
-	else
-		collectgarbage()
-		love.timer.sleep(0.12)
+	local type, path, id = unpack(taskMsg)
+	if path then
+		c_results:push(load(type, path, id))
+		collectgarbage("step", 1)
 	end
 end

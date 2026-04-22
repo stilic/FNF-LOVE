@@ -10,19 +10,3 @@ function postGameOverStartLoop()
 		game.sound.music:fade(1, game.sound.music:getVolume(), ClientPrefs.data.musicVolume / 100)
 	end)
 end
-
-local noLastHit
-function onNoteHit(event)
-	if event.character == self then
-		if PlayState.SONG.song:lower() == "stress" and event.note.type == "alt" then
-			noLastHit = true
-		end
-	end
-end
-
-function postGoodNoteHit()
-	if noLastHit then
-		state.dad.lastHit = math.positive_infinity
-		noLastHit = nil
-	end
-end

@@ -5,7 +5,7 @@ function create()
 	game.camera:snapToTarget()
 
 	util.playSfx(paths.getSound('gameplay/Lights_Turn_On'))
-	game.camera.zoom = 1.5
+	pushEvent("zoomcamera", {zoom = 1.2, ease = "INSTANT"})
 
 	local blackScreen = Graphic(0, 0,
 		math.floor(game.width * 2), math.floor(game.height * 2), Color.BLACK)
@@ -18,9 +18,9 @@ function create()
 		end
 	})
 
-	Timer():start(1, function()
+	Timer.wait(1, function()
+		pushEvent("zoomcamera", {zoom = 1, ease = "quadInOut", duration = 16})
 		state.camHUD.visible, state.camNotes.visible = true, true
-		tween:tween(game.camera, {zoom = state.stage.camZoom},
-			1.2, {ease = Ease.quadInOut, onComplete = function() close() end})
+		Timer.wait(1.2, close)
 	end)
 end

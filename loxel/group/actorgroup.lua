@@ -34,10 +34,10 @@ function ActorGroup:__drawNestGroup(members, camera, list, x2, y2, sf, force, zo
 		end
 
 		if member.__cameraRenderQueue then
-			if ActorSprite.super._canDraw(member) and next(member:_prepareCameraDraw(camera, force)) then
+			if ActorSprite.super.canDraw(member) and next(member:_prepareCameraDraw(camera, force)) then
 				table.insert(list, member)
 			end
-		elseif member:_canDraw() then
+		elseif member:canDraw() then
 			if member.__render then
 				local x, y, w, h, sx, sy, ox, oy = member:_getBoundary()
 
@@ -164,7 +164,7 @@ ActorGroup.loadTexture = SpriteGroup.loadTexture
 ActorGroup.isOnScreen = SpriteGroup.isOnScreen
 ActorGroup.update = SpriteGroup.update
 ActorGroup._isOnScreen = SpriteGroup._isOnScreen
-ActorGroup._canDraw = SpriteGroup._canDraw
+ActorGroup.canDraw = SpriteGroup.canDraw
 ActorGroup.kill = SpriteGroup.kill
 ActorGroup.revive = SpriteGroup.revive
 ActorGroup.destroy = SpriteGroup.destroy

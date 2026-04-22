@@ -1,24 +1,57 @@
 {
-	"animations": [
-		["cheer", "GF Cheer", [], 24, false, [0, 0]],
-		["combo50", "GF Cheer", [], 24, false, [0, 0]],
-		["singLEFT", "GF left note", [], 24, false, [0, 0]],
-		["singDOWN", "GF Down Note", [], 24, false, [0, 0]],
-		["singUP", "GF Up Note", [], 24, false, [0, 0]],
-		["singRIGHT", "GF Right Note", [], 24, false, [0, 0]],
-		["sad", "gf sad", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 24, true, [-50, 316]],
-		["danceLeft", "GF Dancing Beat", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], 24, false, [0, 0]],
-		["danceRight", "GF Dancing Beat", [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29], 24, false, [0, 0]],
-		["hairBlow", "GF Dancing Beat Hair blowing", [0, 1, 2, 3], 24, true, [0, 0]],
-		["hairFall", "GF Dancing Beat Hair Landing", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], 24, false, [0, 0]],
-		["scared", "GF FEAR", [], 24, true, [0, 0]]
-	],
-	"position": [200, 300],
-	"camera_points": [0, 0],
-	"flip_x": false,
-	"icon": "gf",
-	"sprite": "characters/gf",
-	"antialiasing": true,
-	"sing_duration": 8,
-	"scale": 1
+  "version": "1.0.0",
+  "name": "Girlfriend",
+  "assetPath": "characters/gf/gf",
+  "startingAnimation": "danceRight",
+  "singTime": 8.0,
+  "renderType": "animateatlas",
+  "animations": [
+    {
+      "name": "danceLeft",
+      "prefix": "beat",
+      "frameIndices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    },
+    {
+      "name": "danceRight",
+      "prefix": "beat",
+      "frameIndices": [
+        15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
+      ]
+    },
+    {
+      "name": "danceLeft-blow",
+      "prefix": "blow beat",
+      "frameIndices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    },
+    {
+      "name": "danceRight-blow",
+      "prefix": "blow beat",
+      "frameIndices": [
+        15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
+      ]
+    },
+    {
+      "name": "hairFall",
+      "prefix": "hairland",
+      "frameIndices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+    },
+    {
+      "name": "sad",
+      "prefix": "sad",
+      "frameIndices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    },
+    {"name": "singLEFT", "prefix": "left"},
+    {"name": "singDOWN", "prefix": "down"},
+    {"name": "singUP", "prefix": "up"},
+    {"name": "singRIGHT", "prefix": "right"},
+    {"name": "cheer", "prefix": "cheer"},
+    {"name": "combo50", "prefix": "cheer"},
+    {"name": "drop70", "prefix": "sad"},
+    {
+      "name": "hairBlow",
+      "prefix": "blow beat",
+      "frameIndices": [0, 1, 2, 3]
+    },
+    {"name": "scared", "prefix": "scared"}
+  ]
 }

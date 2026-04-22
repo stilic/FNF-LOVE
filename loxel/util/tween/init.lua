@@ -15,6 +15,33 @@ function Tween:tween(object, props, duration, options)
 	return tween
 end
 
+function Tween:color(object, property, targetColor, duration, options)
+	local tween = Instance()
+	tween.manager = self
+	tween.persist = options and (options.persist == true) or false
+
+	tween.object = object
+	tween.property = property
+
+	local sr, sg, sb, sa = Color.get(object[property])
+	local tr, tg, tb, ta = Color.get(targetColor)
+
+	local proxy = {r = sr, g = sg, b = sb, a = sa}
+	local target = {r = tr, g = tg, b = tb, a = ta}
+
+	local userUpdate = options and options.onUpdate
+	options = options or {}
+	options.onUpdate = function(t)
+		object[property] = Color.fromRGB(proxy.r * 255, proxy.g * 255, proxy.b * 255, proxy.a)
+		if userUpdate then userUpdate(t) end
+	end
+
+	tween:tween(proxy, target, duration, options)
+	table.insert(self.instances, tween)
+	tween.object = object
+	return tween
+end
+
 function Tween:quadPath(object, points, speed, isDuration, options)
 	local tween = Motion.QuadPath(object, options, points, speed)
 	tween.object = object

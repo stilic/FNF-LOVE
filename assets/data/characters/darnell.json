@@ -3,7 +3,7 @@
   "name": "Darnell",
   "assetPath": "characters/darnell",
   "singTime": 8.0,
-  "offsets": [20, 100],
+  "offsets": [0, 0],
   "animations": [
     {
       "name": "idle",
@@ -18,6 +18,7 @@
     {
       "name": "singLEFT-hold",
       "prefix": "Left Flame Loop0",
+      "looped": true,
       "offsets": [1, 0]
     },
     {
@@ -28,6 +29,7 @@
     {
       "name": "singDOWN-hold",
       "prefix": "Down Flame Loop0",
+      "looped": true,
       "offsets": [0, -3]
     },
     {
@@ -38,6 +40,7 @@
     {
       "name": "singUP-hold",
       "prefix": "Up Flame Loop0",
+      "looped": true,
       "offsets": [8, 5]
     },
     {
@@ -48,6 +51,7 @@
     {
       "name": "singRIGHT-hold",
       "prefix": "Right Flame Loop0",
+      "looped": true,
       "offsets": [4, 3]
     },
     {
@@ -65,17 +69,17 @@
       "offsets": [0, 0]
     },
     {
-      "name": "lightCan",
+      "name": "weekend-1-lightcan",
       "prefix": "Light Can0",
       "offsets": [8, 1]
     },
     {
-      "name": "kickCan",
+      "name": "weekend-1-kickcan",
       "prefix": "Kick Up0",
       "offsets": [15, 9]
     },
     {
-      "name": "kneeCan",
+      "name": "weekend-1-kneecan",
       "prefix": "Knee Forward0",
       "offsets": [7, -1]
     },

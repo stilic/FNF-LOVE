@@ -220,8 +220,8 @@ function MenuList:update(dt)
 
 	if not self.isMobile and not self.lock and controls:pressed("accept") and self.selectCallback
 		and #self.members > 0 then
-		self.selectCallback(self.members[self.curSelected])
 		self.lock = true
+		self.selectCallback(self.members[self.curSelected])
 	end
 
 	self:updatePositions(dt)
@@ -279,47 +279,6 @@ function MenuList:__render(c)
 end
 
 function MenuList:getWidth() return self.width end
-
 function MenuList:getHeight() return self.height end
-
-function MenuList:_getBoundary()
-	local tx, ty = self.x or 0, self.y or 0
-	if self.offset ~= nil then tx, ty = tx - self.offset.x, ty - self.offset.y end
-
-	local xmin, ymin, xmax, ymax = math.huge, math.huge, -math.huge, -math.huge
-
-	for _, member in ipairs(self.members) do
-		local x, y, w, h, sx, sy = member:_getBoundary()
-
-		x, y = x or 0, y or 0
-		w, h = w or 0, h or 0
-		sx, sy = sx or 1, sy or 1
-
-		local mxmin, mxmax, mymin, mymax = x, x + w, y, y + h
-
-		if mxmin < xmin then xmin = mxmin end
-		if mxmax > xmax then xmax = mxmax end
-		if mymin < ymin then ymin = mymin end
-		if mymax > ymax then ymax = mymax end
-
-		if member.child then
-			x, y, w, h, sx, sy = member.child:_getBoundary()
-			x, y = x or 0, y or 0
-			w, h = w or 0, h or 0
-
-			mxmin, mxmax, mymin, mymax = x, x + w, y, y + h
-
-			if mxmin < xmin then xmin = mxmin end
-			if mxmax > xmax then xmax = mxmax end
-			if mymin < ymin then ymin = mymin end
-			if mymax > ymax then ymax = mymax end
-		end
-	end
-
-	tx, ty = tx + xmin, ty + ymin
-	return tx, ty, xmax - xmin, ymax - ymin,
-		math.abs(self.scale.x * self.zoom.x), math.abs(self.scale.y * self.zoom.y),
-		self.origin.x, self.origin.y
-end
 
 return MenuList

@@ -1,8 +1,8 @@
 local FreeplayState = State:extend("FreeplayState")
+
 FreeplayState.curDifficulty = 2
 
 function FreeplayState:enter()
-	Parser.clearCache()
 	self.notCreated = false
 
 	self.script = Script("data/states/freeplay", false)
@@ -14,7 +14,6 @@ function FreeplayState:enter()
 		return
 	end
 
-	-- Update Presence
 	if Discord then
 		Discord.changePresence({details = "In the Menus", state = "Freeplay Menu"})
 	end
@@ -77,16 +76,17 @@ end
 
 function FreeplayState:openSong(song)
 	PlayState.storyMode = false
-	PlayState.META = song.meta
-	local diff = song.diffs[FreeplayState.curDifficulty]
 
-	if game.keys.pressed.SHIFT then
-		PlayState.loadSong(song.songName, diff)
-		PlayState.storyDifficulty = diff
-		game.switchState(ChartingState())
-	else
-		game.switchState(LoadState(PlayState(nil, song.songName, diff)))
+	local diffIndex = math.min(FreeplayState.curDifficulty, #song.diffs)
+	local diff = song.diffs[diffIndex]
+
+	for _, obj in pairs(self.songs.members) do
+		if obj.songObj ~= song.songObj then
+			obj.songObj:destroy()
+		end
 	end
+
+	game.switchState(LoadState(PlayState(nil, song.songObj, diff)))
 end
 
 function FreeplayState:update(dt)
@@ -131,13 +131,21 @@ function FreeplayState:closeSubstate()
 end
 
 function FreeplayState:changeDiff(change)
-	local songDiffs = self.songs:getSelected().diffs
+	local selectedSong = self.songs:getSelected()
+	if not selectedSong then return end
+
+	local songDiffs = selectedSong.diffs
 	if change == nil then change = 0 end
 
 	FreeplayState.curDifficulty = FreeplayState.curDifficulty + change
-	FreeplayState.curDifficulty = (FreeplayState.curDifficulty - 1) % #songDiffs + 1
 
-	self.intendedScore = Highscore.getScore(self.songs:getSelected().songName,
+	if FreeplayState.curDifficulty > #songDiffs then
+		FreeplayState.curDifficulty = 1
+	elseif FreeplayState.curDifficulty < 1 then
+		FreeplayState.curDifficulty = #songDiffs
+	end
+
+	self.intendedScore = Highscore.getScore(selectedSong.songName,
 		songDiffs[FreeplayState.curDifficulty])
 
 	self.diffText.content = songDiffs[FreeplayState.curDifficulty]:upper()
@@ -156,65 +164,66 @@ function FreeplayState:positionHighscore()
 end
 
 function FreeplayState:loadSongs()
-	local listData, func = nil, Mods.currentMod and paths.getMods or function(...)
-		return paths.getPath(..., false)
-	end
-	local data, dont = {}
+	local func = Mods.currentMod and paths.getMods or function(...) return paths.getPath(..., false) end
+	local data, loaded = {}, false
 
-	if paths.exists(func('data/freeplayList.txt'), 'file') then
-		listData = paths.getText('freeplayList')
-	elseif paths.exists(func('data/freeplaySonglist.txt'), 'file') then
-		listData = paths.getText('freeplaySonglist')
-	else
+	local function try(path)
+		if loaded then return nil end
+		if paths.exists(func("data/" .. path .. ".txt"), 'file') then return paths.getText(path) end
+		return nil
+	end
+
+	local listData = try('freeplayList') or try('freeplaySonglist')
+	if listData then
+		for songName in listData:gmatch("[^\r\n]+") do
+			table.insert(data, Song(songName))
+		end
+		loaded = true
+	end
+
+	if not loaded then
 		if paths.exists(func('data/weekList.txt'), 'file') then
-			listData = paths.getText('weekList'):gsub('\r', ''):split('\n')
-			for _, week in pairs(listData) do
+			local raw = paths.getText('weekList')
+			for week in raw:gmatch("[^\r\n]+") do
 				local weekData = paths.getJSON('data/weeks/weeks/' .. week)
-				if not weekData.hide_fm then
-					for _, song in ipairs(weekData.songs) do
-						table.insert(data, Parser.getMeta(song))
+				if weekData and not weekData.hide_fm then
+					for _, songName in ipairs(weekData.songs) do
+						table.insert(data, Song(songName))
 					end
 				end
 			end
 		else
-			for _, name in pairs(paths.getItems('data/weeks/weeks', 'file', 'json',
-				not Mods.currentMod, true, Mods.currentMod)) do
+			local curMod = Mods.currentMod
+			local weekFiles = paths.getItems('data/weeks/weeks', 'file', 'json', not curMod, true, curMod)
+			for _, name in pairs(weekFiles) do
 				local weekData = paths.getJSON('data/weeks/weeks/' .. name:withoutExt())
 				if weekData and not weekData.hide_fm then
-					for _, song in ipairs(weekData.songs) do
-						table.insert(data, Parser.getMeta(song))
+					for _, songName in ipairs(weekData.songs) do
+						table.insert(data, Song(songName))
 					end
 				end
 			end
-		end
-		dont = true
-	end
-
-	if not dont and listData then
-		listData = listData:gsub('\r', ''):split('\n')
-		for _, song in ipairs(listData) do
-			table.insert(data, Parser.getMeta(song))
 		end
 	end
 
 	if #data > 0 then
 		for i = 1, #data do
-			local songText = AtlasText(0, 0,
-				data[i].displayName, "bold")
+			local songObj = data[i]
+			local songText = AtlasText(0, 0, songObj.name, "bold")
 
-			songText.diffs = data[i].difficulties
-			songText.songName = data[i].song
-			songText.bgColor = data[i].color
+			songText.diffs = songObj.difficulties
+			songText.bgColor = songObj.color
+			songText.songName = songObj.path
+			songText.songObj = songObj
 
-			local icon = HealthIcon(data[i].icon)
+			local icon = HealthIcon(songObj.icon)
 			icon:updateHitbox()
 
-			if songText:getWidth() > 980 then
-				local textScale = 980 / songText:getWidth()
+			local width = songText:getWidth()
+			if width > 980 then
 				songText.origin.x = 0
-				songText.scale.x = textScale
+				songText.scale.x = 980 / width
 			end
-			songText.meta = data[i]
 
 			self.songs:add(songText, icon)
 		end
@@ -225,6 +234,7 @@ function FreeplayState:leave()
 	self.script:call("leave")
 	if self.notCreated then
 		self.script:call("postLeave")
+		self.script:close()
 		return
 	end
 

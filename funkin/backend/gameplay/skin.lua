@@ -23,10 +23,19 @@ function Skin:new(name)
 	end
 	self.skin = self.data.skin
 	self.isPixel = self.skin:endsWith("-pixel")
+
+	self.assetCache = {}
+	self.pathCache = {}
 end
 
 function Skin:get(asset, type)
 	type = type or "image"
+	local cacheKey = type .. ":" .. asset
+
+	if self.assetCache[cacheKey] ~= nil then
+		local cached = self.assetCache[cacheKey]
+		return cached ~= false and cached or nil
+	end
 
 	local function try(skin)
 		return loadAsset(type, "skins/" .. skin .. "/" .. asset)
@@ -37,11 +46,18 @@ function Skin:get(asset, type)
 		obj = try("default-pixel")
 	end
 	if not obj then obj = try("default") end
+
+	self.assetCache[cacheKey] = obj or false
 	return obj
 end
 
 function Skin:getPath(asset, type)
 	type = type or "image"
+	local cacheKey = type .. ":" .. asset
+
+	if self.pathCache[cacheKey] ~= nil then
+		return self.pathCache[cacheKey]
+	end
 
 	local function buildFullPath(skin)
 		local path, full = "skins/" .. skin .. "/" .. asset
@@ -59,7 +75,11 @@ function Skin:getPath(asset, type)
 		path = buildFullPath("default-pixel")
 	end
 	if not path then path = buildFullPath("default") end
-	return path or ("skins/default/" .. asset)
+
+	local finalPath = path or ("skins/default/" .. asset)
+
+	self.pathCache[cacheKey] = finalPath
+	return finalPath
 end
 
 return Skin

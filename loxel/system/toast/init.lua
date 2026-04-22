@@ -1,13 +1,13 @@
 local Icon = loxreq "system.toast.icon"
 
 local Toast = {instances = {}, pool = {}, width = 0, height = 0}
-Toast.iconSize = 24
-Toast.iconSpace = 30
+Toast.iconSize = 28
+Toast.iconSpace = 38
 Toast.scale = 1
 
-Toast.showErrors = true
-Toast.showDeprecations = true
-Toast.showPrints = true
+Toast.showErrors = false
+Toast.showDeprecations = false
+Toast.showPrints = false
 
 local prn = print
 function print(...)
@@ -40,35 +40,20 @@ local function getToast(text, icon, font, color)
 	local n = #text
 	font = font or (n < 14 and Toast.bigfont or Toast.font)
 
-	local width = math.min(Toast.width - 24 * Toast.scale, font:getWidth(text))
-	if icon then
-		width = width + Toast.iconSpace * Toast.scale
-	end
-
-	local _, lines = font:getWrap(text, width - (icon and Toast.iconSpace * Toast.scale or 0))
+	local aTextWidth, lines = font:getWrap(text, Toast.width - 24 * Toast.scale - (icon and Toast.iconSpace * Toast.scale or 0))
+	local width = aTextWidth + (icon and Toast.iconSpace * Toast.scale or 0)
+	local height = font:getHeight() * #lines
 
 	local t = table.remove(Toast.pool, 1)
 	if t then
-		t.text = text
-		t.font = font
-		t.timer = math.min(n * 0.11, 4)
-		t.width = width
-		t.height = font:getHeight() * #lines
-		t.y = -font:getHeight() * #lines - 8
-		t.lastclock = clock
-		t.icon = icon
-		t.color = color or 0xF5DCC4
+		t.text, t.font, t.timer = text, font, math.min(n * 0.11, 4)
+		t.width, t.height, t.y = width, height, -height - 8
+		t.lastclock, t.icon, t.color = clock, icon, color or 0xF5DCC4
 	else
 		t = {
-			text = text,
-			font = font,
-			timer = math.min(n * 0.11, 4),
-			width = width,
-			height = font:getHeight() * #lines,
-			y = -font:getHeight() * #lines - 8,
-			lastclock = clock,
-			icon = icon,
-			color = color or 0xF5DCC4
+			text = text, font = font, timer = math.min(n * 0.11, 4),
+			width = width, height = height, y = -height - 8,
+			lastclock = clock, icon = icon, color = color or 0xF5DCC4
 		}
 	end
 
@@ -86,24 +71,23 @@ local function handler(text, font, icon, color)
 			t.lastclock = clock
 
 			local newtext = t.text
-			local font = t.font
-			local width = math.min(Toast.width - 24 * Toast.scale, font:getWidth(newtext))
-			if icon then
-				width = width + Toast.iconSpace * Toast.scale
-			end
-			local _, lines = font:getWrap(newtext, width - (icon and Toast.iconSpace * Toast.scale or 0))
-			t.width = width
-			t.height = font:getHeight() * #lines
+			local currentFont = t.font
+			local aTextWidth, lines = currentFont:getWrap(newtext, Toast.width - 24 * Toast.scale - (icon and Toast.iconSpace * Toast.scale or 0))
+
+			t.width = aTextWidth + (icon and Toast.iconSpace * Toast.scale or 0)
+			t.height = currentFont:getHeight() * #lines
 
 			return t
 		end
 	end
+
 	local t = getToast(text, icon, font, color)
 	if not t then return end
 	t.originalText = text
 	t.count = 1
 	Toast.visibleToasts = Toast.visibleToasts + 1
 	table.insert(Toast.instances, t)
+
 	return t
 end
 
@@ -127,12 +111,10 @@ function Toast:resize(width, height)
 	self.height = height
 
 	for _, t in ipairs(self.instances) do
-		local twidth = math.min(width - 24 * self.scale, t.font:getWidth(t.text))
-		if t.icon then
-			twidth = twidth + Toast.iconSpace * self.scale
-		end
-		local _, lines = t.font:getWrap(t.text, twidth - (t.icon and Toast.iconSpace * self.scale or 0))
-		t.width, t.height = twidth, t.font:getHeight() * #lines
+		local aTextWidth, lines = t.font:getWrap(t.text, width - 24 * self.scale - (t.icon and Toast.iconSpace * self.scale or 0))
+
+		t.width = aTextWidth + (t.icon and Toast.iconSpace * self.scale or 0)
+		t.height = t.font:getHeight() * #lines
 	end
 end
 

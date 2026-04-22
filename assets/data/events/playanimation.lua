@@ -6,7 +6,6 @@ function event(params)
 		[{"girlfriend", "gf"}] = function() target = state.gf end
 	})
 	if target then
-		target:playAnim(data.anim, data.force)
-		target.lastHit = PlayState.conductor.time
+		target:playAnim(data.anim, data.force, nil, true)
 	end
 end

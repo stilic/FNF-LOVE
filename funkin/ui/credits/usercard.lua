@@ -35,6 +35,9 @@ function UserCard:new(x, y, width, height)
 	self.media = SpriteGroup(0, self.box.y)
 	self.media.scrollFactor:set()
 	self:add(self.media)
+
+	self.curSocial = 1
+	self.onSocials = false
 end
 
 function UserCard:update(dt)
@@ -54,6 +57,8 @@ function UserCard:__reloadIcon(image, url, error)
 end
 
 function UserCard:reload(d)
+	self.data = d
+
 	self.name.content = d.name
 	self.desc.content = d.description
 	self.name:centerOrigin()
@@ -67,22 +72,45 @@ function UserCard:reload(d)
 
 	self.icon.loading = nil
 
-	if d.icon:startsWith("https://") then
-		self.icon:loadTexture(paths.getImage("menus/credits/icons/loading"))
+	if d.icon and d.icon ~= "" then
+		self.icon.visible = true
 
-		local icon = d.icon .. "?size=100"
-		self.icon.loading = icon
-		paths.async.getImage(icon, bind(self, self.__reloadIcon))
+		if d.icon:startsWith("https://") or d.icon:startsWith("@") then
+			self.icon:loadTexture(paths.getImage("menus/credits/icons/loading"))
+
+			local icon
+			if d.icon:startsWith("@") then
+				local clean = d.icon:sub(2)
+				local platform, handle
+				platform, handle = clean:match("([^:]+):(.+)")
+				if platform and handle then
+					local apiURL = string.format("https://unavatar.io/%s/%s?fallback=false", platform, handle)
+					icon = string.format("https://wsrv.nl/?output=png&maxage=1d&w=128&q=100&url=%s", apiURL)
+				end
+			else
+				icon = d.icon .. "?size=128"
+			end
+
+			self.icon.loading = icon
+			paths.async.getImage(icon, bind(self, self.__reloadIcon))
+		else
+			self.icon:loadTexture(paths.getImage("menus/credits/icons/" .. d.icon))
+		end
+		self.icon.angle = 0
+		self.icon:setGraphicSize(100, 100)
+		self.icon:updateHitbox()
+		self.name.x = self.icon.x + self.icon.width + 10
 	else
-		self.icon:loadTexture(paths.getImage("menus/credits/icons/" .. d.icon))
+		self.icon.visible = false
+		self.name.x = self.icon.x
 	end
-	self.icon.angle = 0
-	self.icon:setGraphicSize(100, 100)
-	self.icon:updateHitbox()
 
 	self:reloadSocials(d)
 	self.box.height = (game.height - 130) - (self.media:getHeight())
 	if #self.media.members > 0 then self.box.height = self.box.height - 10 end
+
+	self.curSocial = 1
+	self.onSocials = false
 end
 
 function UserCard:reloadSocials(person)
@@ -114,6 +142,58 @@ function UserCard:reloadSocials(person)
 		end
 	end
 	self.media.y = game.height - self.media:getHeight() - 20
+end
+
+function UserCard:enterSocials()
+	if #self.media.members == 0 then return false end
+	self.onSocials = true
+	self.curSocial = 1
+	self:updateSocialFocus()
+	return true
+end
+
+function UserCard:exitSocials()
+	self.onSocials = false
+	self:updateSocialFocus()
+end
+
+function UserCard:changeSocialSelection(change)
+	if not self.onSocials then return end
+	self.curSocial = self.curSocial + change
+	if self.curSocial > #self.media.members then self.curSocial = 1 end
+	if self.curSocial < 1 then self.curSocial = #self.media.members end
+	self:updateSocialFocus()
+end
+
+function UserCard:updateSocialFocus()
+	for i, card in ipairs(self.media.members) do
+		card:setFocus(self.onSocials and i == self.curSocial)
+	end
+end
+
+function UserCard:getSelectedSocialUrl()
+	if not self.data or not self.data.social then return nil end
+
+	local socialList = self.data.social
+	local index = #socialList - (self.curSocial - 1)
+	local item = socialList[index]
+
+	if item then
+		return self:getURL(item.name, item.text)
+	end
+	return nil
+end
+
+function UserCard:getURL(platform, handle)
+	platform = platform:lower()
+	if platform == "x" or platform == "twitter" then
+		return "https://twitter.com/" .. handle:gsub("@", "")
+	elseif platform == "github" then
+		return "https://github.com" .. handle
+	elseif platform == "youtube" then
+		return "https://youtube.com/" .. handle
+	end
+	return nil
 end
 
 return UserCard

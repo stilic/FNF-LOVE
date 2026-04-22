@@ -1,14 +1,14 @@
 {
 	"animations": [
-		["firstDeath", "BF dies", [], 24, false, [37, 900]],
-		["deathLoop", "BF Dead Loop", [], 24, true, [37, 900]],
-		["deathConfirm", "BF Dead confirm", [], 24, false, [0, 900]]
+		["firstDeath", "BF dies", [], 24, false, [100, 1060]],
+		["deathLoop", "BF Dead Loop", [], 24, true, [100, 1060]],
+		["deathConfirm", "BF Dead confirm", [], 24, false, [100, 1060]]
 	],
-	"position": [350, 0],
-	"camera_points": [300, 0],
+	"position": [0, 0],
+	"camera_points": [-300, -300],
 	"flip_x": true,
 	"icon": "bf",
-	"sprite": "characters/boyfriendDead_atlas",
+	"sprite": "characters/boyfriend/boyfriendDead_atlas",
 	"antialiasing": true,
 	"sing_duration": 8,
 	"scale": 1

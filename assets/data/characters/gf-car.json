@@ -1,19 +1,64 @@
 {
-	"animations": [
-		["cheer", "GF Cheer car", [], 24, false, [0, 0]],
-		["cheer-loop", "GF Cheer car", [3, 4, 5, 6, 7, 8], 24, true, [0, 0]],
-		["combo50", "GF Cheer car", [], 24, false, [0, 0]],
-		["combo50-loop", "GF Cheer car", [3, 4, 5, 6, 7, 8], 24, true, [0, 0]],
-		["sad", "gf sad car", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 24, true, [-50, 316]],
-		["danceRight", "GF Dancing Beat Hair blowing CAR", [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29], 24, false, [0, 0]],
-		["danceLeft", "GF Dancing Beat Hair blowing CAR", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], 24, false, [0, 0]]
-	],
-	"position": [200, 300],
-	"camera_points": [-40, 130],
-	"flip_x": false,
-	"icon": "gf",
-	"sprite": "characters/gfCar_atlas",
-	"antialiasing": true,
-	"sing_duration": 8,
-	"scale": 1
+  "version": "1.0.0",
+  "name": "Girlfriend (Car)",
+  "assetPath": "characters/gf/gf-car",
+  "startingAnimation": "danceRight",
+  "renderType": "animateatlas",
+  "cameraOffsets": [-100, 180],
+  "animations": [
+    {
+      "name": "danceLeft",
+      "prefix": "dancebeat",
+      "frameIndices": [30, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      "offsets": [0, 0]
+    },
+    {
+      "name": "danceRight",
+      "prefix": "dancebeat",
+      "frameIndices": [
+        15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
+      ],
+      "offsets": [0, 0]
+    },
+    {
+      "name": "danceLeft-hold",
+      "prefix": "dance loop",
+      "looped": true,
+      "offsets": [0, 0]
+    },
+    {
+      "name": "danceRight-hold",
+      "prefix": "dance loop",
+      "looped": true,
+      "offsets": [0, 0]
+    },
+    {
+      "name": "cheer",
+      "prefix": "cheer",
+      "offsets": [0, 0]
+    },
+    {
+      "name": "combo50",
+      "prefix": "cheer",
+      "offsets": [0, 0]
+    },
+    {
+      "name": "drop70",
+      "prefix": "sad"
+    },
+     {
+      "name": "cheer-hold",
+      "prefix": "cheer loop",
+      "offsets": [0, 0]
+    },
+    {
+      "name": "combo50-hold",
+      "prefix": "cheer loop",
+      "offsets": [0, 0]
+    },
+    {
+      "name": "drop70-hold",
+      "prefix": "sad loop"
+    }
+  ]
 }

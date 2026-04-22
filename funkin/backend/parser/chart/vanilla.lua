@@ -1,162 +1,156 @@
 local vanilla = {name = "Vanilla/Psych"}
+local NoteBuffer = require "funkin.backend.notebuffer"
 
-local function getFromMeta(data, tbl)
-	Parser.pset(tbl, "song", data.songName or data.song or data.name)
-	Parser.pset(tbl, "stage", data.stage)
-	Parser.pset(tbl, "skin", data.skin)
+local STAGE_BY_SONG = {
+	["test"]              = "test",
+	["spookeez"]          = "spooky",  ["south"]        = "spooky",  ["monster"]  = "spooky",
+	["pico"]              = "philly",  ["philly-nice"]  = "philly",  ["blammed"]  = "philly",
+	["satin-panties"]     = "limo",    ["high"]         = "limo",    ["milf"]     = "limo",
+	["cocoa"]             = "mall",    ["eggnog"]       = "mall",
+	["winter-horrorland"] = "mall-evil",
+	["senpai"]            = "school",  ["roses"]        = "school",
+	["thorns"]            = "school-evil",
+	["ugh"]               = "tank",    ["guns"]         = "tank",    ["stress"]   = "tank",
+}
 
-	Parser.pset(tbl, "difficulties", data.difficulties)
+local SKIN_BY_STAGE = {
+	["school"]       = "default-pixel",
+	["school-evil"]  = "default-pixel",
+}
 
-	local char = data.characters or data
-	Parser.pset(tbl, "player1", char.player)
-	Parser.pset(tbl, "player2", char.opponent)
-	Parser.pset(tbl, "gfVersion", char.girlfriend)
-end
+local GF_BY_STAGE = {
+	["limo"]        = "gf-car",
+	["mall"]        = "gf-christmas",
+	["mall-evil"]   = "gf-christmas",
+	["school"]      = "gf-pixel",
+	["school-evil"] = "gf-pixel",
+	["tank"]        = "gf-tankmen",
+}
 
-local function getStuff(data, eventData, bpm, psych)
-	local dad, bf, events, timeChanges, sectionChanges =
-		{}, {}, {}, {}, {}
-
-	local time, steps, total, add, focus, lastFocus = 0, 0, 0
-	table.insert(timeChanges, Parser.newTimeChange(0, bpm))
-	timeChanges[1].stepCrotchet, timeChanges[1].id =
-		((60 / bpm) * 1000) / 4, 0
-	local lastSectionBeats = 0
-
-	if eventData then
-		for _, e in ipairs(eventData) do
-			local etime = e[1]
-			for _, i in ipairs(e[2]) do
-				local eevent = i[1]
-				local evalue = {i[2], i[3]}
-
-				table.insert(events, {
-					t = etime,
-					e = eevent,
-					v = evalue,
-					psych = true
-				})
-			end
-		end
-	end
-
-	for i, s in ipairs(data) do
-		if s.sectionNotes then
-			for _, n in ipairs(s.sectionNotes) do
-				local kind = n[4]
-				local column, gf = n[2], kind == "gf" or kind == "GF Sing"
-				local hit = psych or s.mustHitSection
-				if column > 3 then hit = not hit end
-				if kind == true or kind == 1 or (not hit and s.altAnim) then
-					kind = "alt"
-				elseif gf or type(kind) ~= "string" then
-					kind = nil
-				end
-
-				local newNote = {
-					t = n[1],
-					d = column % 4,
-					l = n[3],
-					k = kind,
-					gf = gf or (not hit and s.gfSection)
-				}
-				table.insert(hit and bf or dad, newNote)
-			end
-
-			focus = s.gfSection and 2 or (s.mustHitSection and 0 or 1)
-			if focus ~= lastFocus then
-				table.insert(events, {
-					t = time,
-					e = "FocusCamera",
-					v = focus
-				})
-				lastFocus = focus
-			end
-			if s.changeBPM and s.bpm ~= nil and s.bpm ~= bpm then
-				bpm, total = s.bpm, total + 1
-
-				local timeChange = Parser.newTimeChange(time or 0, bpm)
-				timeChange.step = steps
-				timeChange.stepCrotchet = ((60 / bpm) * 1000) / 4
-				timeChange.id = total
-
-				if #sectionChanges > 0 then
-					timeChange.n, timeChange.d =
-						sectionChanges[#sectionChanges].n, sectionChanges[#sectionChanges].d
-				end
-
-				table.insert(timeChanges, timeChange)
-			end
-
-			add = s.sectionBeats and s.sectionBeats * 4 or 16
-			steps = steps + add
-			local stepCrotchet = timeChanges[#timeChanges].stepCrotchet
-			time = time + stepCrotchet * add
-		end
-	end
-
-	if #timeChanges > 1 then Parser.sortByTime(timeChanges) end
-
-	return {enemy = dad, player = bf}, events, timeChanges
-end
-
-function vanilla.parse(data, events, meta)
-	local baseData = data.song
-	data = type(baseData) == "table" and baseData or data
-
-	local chart = Parser.getDummyChart()
-
-	Parser.pset(chart, "song", data.song)
-
-	if meta then getFromMeta(meta, chart) end
-
-	Parser.pset(chart, "bpm", data.bpm)
-	Parser.pset(chart, "speed", data.speed)
-
-	Parser.pset(chart, "stage", data.stage)
-	Parser.pset(chart, "skin", data.skin)
-
-	Parser.pset(chart, "player1", data.player1)
-	Parser.pset(chart, "player2", data.player2)
-	Parser.pset(chart, "gfVersion", data.gfVersion)
-
-	local song = paths.formatToSongPath(chart.song)
+local function applyFallbacks(chart, songPath)
 	if not chart.stage then
-		switch(song, {
-			["test"] = function() chart.stage = "test" end,
-			[{"spookeez", "south", "monster"}] = function() chart.stage = "spooky" end,
-			[{"pico", "philly-nice", "blammed"}] = function() chart.stage = "philly" end,
-			[{"satin-panties", "high", "milf"}] = function() chart.stage = "limo" end,
-			[{"cocoa", "eggnog"}] = function() chart.stage = "mall" end,
-			["winter-horrorland"] = function() chart.stage = "mall-evil" end,
-			[{"senpai", "roses"}] = function() chart.stage = "school" end,
-			["thorns"] = function() chart.stage = "school-evil" end,
-			[{"ugh", "guns", "stress"}] = function() chart.stage = "tank" end,
-			default = function() chart.stage = "stage" end
-		})
+		chart.stage = STAGE_BY_SONG[songPath] or "stage"
 	end
 	if not chart.skin then
-		switch(chart.stage, {
-			[{"school", "school-evil"}] = function() chart.skin = "default-pixel" end,
-			default = function() chart.skin = "default" end
-		})
+		chart.skin = SKIN_BY_STAGE[chart.stage]
 	end
 	if not chart.gfVersion then
-		switch(chart.stage, {
-			["limo"] = function() chart.gfVersion = "gf-car" end,
-			[{"mall", "mall-evil"}] = function() chart.gfVersion = "gf-christmas" end,
-			[{"school", "school-evil"}] = function() chart.gfVersion = "gf-pixel" end,
-			["tank"] = function()
-				chart.gfVersion = song == "stress" and "pico-speaker" or "gf-tankmen"
-			end,
-			default = function() chart.gfVersion = "gf" end
-		})
+		if chart.stage == "tank" and songPath == "stress" then
+			chart.gfVersion = "pico-speaker"
+		else
+			chart.gfVersion = GF_BY_STAGE[chart.stage] or "gf"
+		end
 	end
+end
+
+local function resolveKind(raw, forceAlt)
+	if raw == true or raw == 1 or forceAlt then return "alt" end
+	if raw == "gf" or raw == "GF Sing"     then return nil  end
+	if type(raw) == "string"               then return raw  end
+	return nil
+end
+
+local function parseSections(sections, startBpm, isPsych, externalEvents)
+	local enemy       = NoteBuffer()
+	local player      = NoteBuffer()
+	local events      = {}
+	local timeChanges = { Song.newTimeChange(0, startBpm) }
+
+	timeChanges[1].stepCrotchet = (60 / startBpm * 1000) / 4
+	timeChanges[1].id           = 0
+
+	if externalEvents then
+		for _, entry in ipairs(externalEvents) do
+			local eTime = entry[1]
+			for _, item in ipairs(entry[2]) do
+				events[#events + 1] = { t = eTime, e = item[1], v = { item[2], item[3] }, psych = true }
+			end
+		end
+	end
+
+	local currentBpm    = startBpm
+	local bpmChangeCount = 0
+	local currentTime   = 0
+	local currentStep   = 0
+	local lastFocus     = nil
+
+	for _, section in ipairs(sections) do
+		if not section.sectionNotes then goto nextSection end
+
+		for _, noteArr in ipairs(section.sectionNotes) do
+			local time_ms = noteArr[1]
+			local col     = noteArr[2]
+			local length  = noteArr[3]
+			local rawKind = noteArr[4]
+
+			local isGf    = rawKind == "gf" or rawKind == "GF Sing"
+			local hitsPlayer = isPsych or section.mustHitSection
+			if col > 3 then hitsPlayer = not hitsPlayer end
+
+			local forceAlt = not hitsPlayer and section.altAnim
+			local kind     = isGf and nil or resolveKind(rawKind, forceAlt)
+			local gfFlag   = isGf or (not hitsPlayer and section.gfSection) or false
+			local buf      = hitsPlayer and player or enemy
+
+			buf:push(time_ms, col % 4, length, kind, gfFlag)
+		end
+
+		local focus = section.gfSection and 2 or (section.mustHitSection and 0 or 1)
+		if focus ~= lastFocus then
+			events[#events + 1] = { t = currentTime, e = "FocusCamera", v = focus }
+			lastFocus = focus
+		end
+
+		if section.changeBPM and section.bpm and section.bpm ~= currentBpm then
+			currentBpm    = section.bpm
+			bpmChangeCount = bpmChangeCount + 1
+
+			local tc            = Song.newTimeChange(currentTime, currentBpm)
+			tc.step             = currentStep
+			tc.stepCrotchet     = (60 / currentBpm * 1000) / 4
+			tc.id               = bpmChangeCount
+			timeChanges[#timeChanges + 1] = tc
+		end
+
+		local rowCount     = section.sectionBeats and section.sectionBeats * 4 or 16
+		local stepCrotchet = timeChanges[#timeChanges].stepCrotchet
+		currentStep = currentStep + rowCount
+		currentTime = currentTime + stepCrotchet * rowCount
+
+		::nextSection::
+	end
+
+	return { enemy = enemy, player = player }, events, timeChanges
+end
+
+function vanilla.parse(song, data, events)
+	local raw = data.song
+	data = type(raw) == "table" and raw or data
+
+	local chart = Song.newChart()
+
+	chart.song      = data.song
+	chart.bpm       = data.bpm
+	chart.speed     = data.speed
+	chart.stage     = data.stage
+	chart.player1   = data.player1
+	chart.player2   = data.player2
+	chart.gfVersion = data.gfVersion
+
+	local meta      = song.meta
+	chart.song      = chart.song      or meta.songName or meta.song
+	chart.stage     = chart.stage     or meta.stage
+	chart.skin      = chart.skin      or meta.skin
+	chart.player1   = chart.player1   or meta.player
+	chart.player2   = chart.player2   or meta.opponent
+	chart.gfVersion = chart.gfVersion or meta.girlfriend
+
+	local isPsych = data.format and data.format:startsWith("psych")
+	applyFallbacks(chart, paths.formatToSongPath(chart.song))
 
 	if data.notes then
 		chart.notes, chart.events, chart.timeChanges =
-			getStuff(data.notes, events or data.events, chart.bpm,
-				data.format and data.format:startsWith("psych"))
+			parseSections(data.notes, chart.bpm, isPsych, events or data.events)
 	end
 
 	return chart

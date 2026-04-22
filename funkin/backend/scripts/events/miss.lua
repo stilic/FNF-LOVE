@@ -14,6 +14,22 @@ function MissEvent:new(notefield, direction, note, character, sound)
 	self.character = character
 end
 
+function MissEvent:recycle(notefield, direction, note, character, sound)
+	MissEvent.super.recycle(self)
+
+	self.muteVocals = true
+	self.cancelledAnim = false
+	self.cancelledSadGF = false
+	self.triggerSound = sound == nil and true or sound
+
+	self.notefield = notefield
+	self.direction = direction
+	self.note = note
+	self.character = character
+
+	return self
+end
+
 function MissEvent:cancelAnim()
 	self.cancelledAnim = true
 end

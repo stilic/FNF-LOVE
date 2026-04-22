@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Created with Funkin Packer v0.1.3 https://neeeoo.github.io/funkin-packer/
+-->
+<TextureAtlas imagePath="crowd.png" width="2695" height="2757">
+	<SubTexture name="idle0000" x="1" y="1" width="450" height="1873" rotated="true" frameX="-0" frameY="-2" frameWidth="1873" frameHeight="452"/>
+	<SubTexture name="idle0001" x="2251" y="1" width="443" height="1863" rotated="true" frameX="-10" frameY="-9" frameWidth="1873" frameHeight="452"/>
+	<SubTexture name="idle0002" x="1" y="2315" width="1859" height="441" frameX="-10" frameY="-9" frameWidth="1873" frameHeight="452"/>
+	<SubTexture name="idle0003" x="1" y="1877" width="1865" height="435" frameX="-4" frameY="-15" frameWidth="1873" frameHeight="452"/>
+	<SubTexture name="idle0004" x="906" y="1" width="435" height="1869" rotated="true" frameX="-4" frameY="-15" frameWidth="1873" frameHeight="452"/>
+	<SubTexture name="idle0005" x="1344" y="1" width="450" height="1869" rotated="true" frameX="-4" frameY="-0" frameWidth="1873" frameHeight="452"/>
+	<SubTexture name="idle0006" x="1797" y="1" width="451" height="1867" rotated="true" frameX="-4" frameY="-0" frameWidth="1873" frameHeight="452"/>
+	<SubTexture name="idle0007" x="454" y="1" width="449" height="1871" rotated="true" frameX="-0" frameY="-2" frameWidth="1873" frameHeight="452"/>
+</TextureAtlas>

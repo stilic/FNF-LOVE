@@ -14,7 +14,7 @@ function Addons.getIcon(addon) return ModdingUtil.getIcon(Addons.root, addon.pat
 function Addons.getMetadata(addon) return ModdingUtil.getMeta(Addons.root, addon.path) end
 
 function Addons.sortAddons()
-	local order = game.save.data.addons.order
+	local order = ClientPrefs.save.data.addons.order
 	table.sort(Addons.all, function(a, b)
 		return (table.find(order, a.path) or math.huge) < (table.find(order, b.path) or math.huge)
 	end)
@@ -23,7 +23,7 @@ end
 function Addons.move(addon, n)
 	local name = addon.path
 
-	local order = game.save.data.addons.order
+	local order = ClientPrefs.save.data.addons.order
 	local idx, new = table.find(order, name), nil
 
 	if idx then
@@ -35,15 +35,15 @@ end
 
 function Addons.setState(addon, enabled)
 	addon.active = enabled
-	game.save.data.addons.active[addon.path] = addon.active
+	ClientPrefs.save.data.addons.active[addon.path] = addon.active
 end
 
 function Addons.reload()
 	table.clear(Addons.all)
 	if not paths.exists(Addons.root, "directory") then return end
 
-	if not game.save.data.addons then
-		game.save.data.addons = {
+	if not ClientPrefs.save.data.addons then
+		ClientPrefs.save.data.addons = {
 			order = {},
 			active = {}
 		}
@@ -55,28 +55,28 @@ function Addons.reload()
 		if lfs.getInfo(Addons.root .. "/" .. dir, "directory") then
 			local addon = {
 				path = dir,
-				active = game.save.data.addons.active[dir] or false
+				active = ClientPrefs.save.data.addons.active[dir] or false
 			}
-			if not table.find(game.save.data.addons.order, dir) then
-				table.insert(game.save.data.addons.order, dir)
+			if not table.find(ClientPrefs.save.data.addons.order, dir) then
+				table.insert(ClientPrefs.save.data.addons.order, dir)
 			end
 			table.insert(Addons.all, addon)
 			existent[dir] = true
 		end
 	end
 
-	if game.save.data.addons.order then
-		for i = #game.save.data.addons.order, 1, -1 do
-			if not existent[game.save.data.addons.order[i]] then
-				table.remove(game.save.data.addons.order, i)
+	if ClientPrefs.save.data.addons.order then
+		for i = #ClientPrefs.save.data.addons.order, 1, -1 do
+			if not existent[ClientPrefs.save.data.addons.order[i]] then
+				table.remove(ClientPrefs.save.data.addons.order, i)
 			end
 		end
 	end
 
-	if game.save.data.addons.active then
-		for name in pairs(game.save.data.addons.active) do
+	if ClientPrefs.save.data.addons.active then
+		for name in pairs(ClientPrefs.save.data.addons.active) do
 			if not existent[name] then
-				game.save.data.addons.active[name] = nil
+				ClientPrefs.save.data.addons.active[name] = nil
 			end
 		end
 	end

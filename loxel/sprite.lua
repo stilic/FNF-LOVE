@@ -106,12 +106,12 @@ end
 
 function Sprite:getFrameWidth()
 	local f = self.animation and self.animation:getCurrentFrame()
-	return f and f.width or self.texture and self.texture:getWidth()
+	return f and f.width or (self.texture and self.texture:getWidth()) or 0
 end
 
 function Sprite:getFrameHeight()
 	local f = self.animation and self.animation:getCurrentFrame()
-	return f and f.height or self.texture and self.texture:getHeight()
+	return f and f.height or (self.texture and self.texture:getHeight()) or 0
 end
 
 function Sprite:getFrameDimensions() return self:getFrameWidth(), self:getFrameHeight() end
@@ -170,9 +170,9 @@ function Sprite:update(dt)
 	Sprite.super.update(self, dt)
 end
 
-function Sprite:_canDraw()
+function Sprite:canDraw()
 	return self.texture ~= nil and (self.width ~= 0 or self.height ~= 0) and
-		Sprite.super._canDraw(self)
+		Sprite.super.canDraw(self)
 end
 
 function Sprite:__render(camera)

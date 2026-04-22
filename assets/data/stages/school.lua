@@ -5,13 +5,13 @@ local floor = math.floor
 
 function preload()
 	return {
-	    {"image", SCRIPT_PATH .. "weebSky"},
-	    {"image", SCRIPT_PATH .. "bgFreaks"},
-	    {"image", SCRIPT_PATH .. "weebSchool"},
-	    {"image", SCRIPT_PATH .. "weebStreet"},
-	    {"image", SCRIPT_PATH .. "weebTreesBack"},
-	    {"image", SCRIPT_PATH .. "weebTrees"},
-	    {"image", SCRIPT_PATH .. "petals"}
+		{"image", SCRIPT_PATH .. "weebSky"},
+		{"image", SCRIPT_PATH .. "bgFreaks"},
+		{"image", SCRIPT_PATH .. "weebSchool"},
+		{"image", SCRIPT_PATH .. "weebStreet"},
+		{"image", SCRIPT_PATH .. "weebTreesBack"},
+		{"image", SCRIPT_PATH .. "weebTrees"},
+		{"image", SCRIPT_PATH .. "petals"}
 	}
 end
 

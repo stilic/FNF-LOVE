@@ -22,10 +22,10 @@ function SoundTray.init(width, height)
 	SoundTray.game.width = width
 	SoundTray.game.height = height
 
-	if game.save.data.gameVolume ~= nil then
-		game.sound.setVolume(game.save.data.gameVolume / 10)
-		prev = game.save.data.gameVolume
-		n = game.save.data.gameVolume
+	if ClientPrefs.save.data.gameVolume ~= nil then
+		game.sound.setVolume(ClientPrefs.save.data.gameVolume / 10)
+		prev = ClientPrefs.save.data.gameVolume
+		n = ClientPrefs.save.data.gameVolume
 	end
 
 	return SoundTray
@@ -92,7 +92,7 @@ function SoundTray.adjustVolume(amount)
 		game.sound.play(SoundTray.sounds[sound], 1, false, false)
 	end
 
-	game.save.data.gameVolume = newVolume
+	ClientPrefs.save.data.gameVolume = newVolume
 end
 
 function SoundTray.toggleMute()

@@ -29,13 +29,13 @@ function StoryCharacter:changeCharacter(char)
 			self:setFrames(paths.getSparrowAtlas(
 				'menus/storymenu/characters/' .. charFile.sprite))
 			self.animation:reset()
-			self:addAnimByPrefix('idle', charFile.idle_anim, 24)
+			self.animation:addByPrefix('idle', charFile.idle_anim, 24)
 
 			local confirmAnim = charFile.confirm_anim
 			if confirmAnim ~= nil and confirmAnim:len() > 0 and confirmAnim ~=
 				charFile.idle_anim then
-				self:addAnimByPrefix('confirm', confirmAnim, 24, false)
-				if self.__animations['confirm'] then
+				self.animation:addByPrefix('confirm', confirmAnim, 24, false)
+				if self.animation:has('confirm') then
 					self.hasConfirmAnimation = true
 				end
 			end
@@ -48,7 +48,7 @@ function StoryCharacter:changeCharacter(char)
 			end
 			self.offset.x, self.offset.y = charFile.position[1],
 				charFile.position[2]
-			self:play('idle')
+			self.animation:play('idle')
 		end
 	})
 end

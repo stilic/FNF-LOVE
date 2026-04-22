@@ -7,7 +7,7 @@ return {
 	file = "FNF-LOVE",
 	icon = "art/icon.png",
 	version = "1.0.1-dev",
-	package = "com.stilic.fnflove",
+	package = "fr.stilic.fnflove",
 	width = 1280,
 	height = 720,
 
@@ -27,6 +27,15 @@ return {
 		loxelForceRenderCameraComplex = false,
 		loxelDisableRenderCameraComplex = false,
 		loxelDisableScissorOnRenderCameraSimple = false,
-		loxelDefaultClipCamera = true
+		loxelDefaultClipCamera = true,
+
+		jitFFI = jit.status(),
+
+		imageAlphaBleed = true,
+		imageQuality = 1,
+		imageBlurSamples = 0,
+
+		animateAtlasRenderCanvas = true,
+		animateAtlasQuality = 2,
 	}
 }

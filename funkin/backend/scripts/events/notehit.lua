@@ -14,6 +14,22 @@ function NoteHitEvent:new(notefield, note, character, rating)
 	self.rating = rating
 end
 
+function NoteHitEvent:recycle(notefield, note, character, rating)
+	NoteHitEvent.super.recycle(self)
+
+	self.cancelledAnim = false
+	self.strumGlowCancelled = false
+	self.coverSpawnCancelled = false
+	self.unmuteVocals = true
+
+	self.notefield = notefield
+	self.note = note
+	self.character = character
+	self.rating = rating
+
+	return self
+end
+
 function NoteHitEvent:cancelAnim()
 	self.cancelledAnim = true
 end

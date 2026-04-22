@@ -1,7 +1,7 @@
 -- cod3e cancer
 
 --[[local function checkCollision(...)
-	
+
 end]]
 
 local Actor = Object:extend("Actor")
@@ -76,14 +76,6 @@ function Actor:update(dt)
 	end
 end
 
-function Actor:_isOnScreen(c, ...)
-	return true
-end
-
-function Actor:isOnScreen(cameras)
-	return true
-end
-
 -- these fuckers that handles everything
 local max, rad, fastcos, fastsin = math.max, math.rad, math.aprcos, math.aprsin
 function Actor.toScreen(x, y, z, fov)
@@ -111,5 +103,10 @@ end
 function Actor:_getBoundary()
 	return
 end
+
+function Actor:getBoundaryTransform() return self._data end
+function Actor:getWorldBounds() return self._data end
+function Actor:_isOnScreen() return true end
+function Actor:isOnScreen() return true end
 
 return Actor

@@ -52,9 +52,9 @@ function TitleState:enter()
 	self.titleText:updateHitbox()
 
 	self.titleText.color = Color.fromHEX(0x50FFFF)
-	-- local daColor = Color.fromHEX(0x5060DF)
-	-- Tween.tween(self.titleText.color, daColor,
-		-- 2, {ease = "smoothStepInOut", type = "pingpong"})
+	local daColor = Color.fromHEX(0x5060DF)
+	Tween.color(self.titleText, "color", daColor,
+		2, {ease = "smoothStepInOut", type = "pingpong"})
 	Tween.tween(self.titleText, {alpha = 0.5},
 		2, {ease = "smoothStepInOut", type = "pingpong"})
 
@@ -218,6 +218,7 @@ function TitleState:leave()
 	self.script:call("leave")
 	if self.notCreated then
 		self.script:call("postLeave")
+		self.script:close()
 		return
 	end
 	self.script:call("postLeave")

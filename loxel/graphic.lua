@@ -48,85 +48,113 @@ function Graphic:updateHitbox()
 	self.height = max - min
 end
 
-function Graphic:_getBoundary()
-	local x, y = self.x or 0, self.y or 0
-	if self.offset ~= nil then x, y = x - self.offset.x, y - self.offset.y end
-	local w, h = self.width, self.height
-	if self.lined then
-		local lw = (self.line.width or 1)
-		x, w = x - lw / 2, w + lw
-		y, h = y - lw / 2, h + lw
+function Graphic:getLocalBounds()
+	if self.type ~= "polygon" or #self.config.vertices == 0 then
+		return Graphic.super.getLocalBounds(self)
 	end
 
-	return x, y, w, h, math.abs(self.scale.x * self.zoom.x), math.abs(self.scale.y * self.zoom.y),
-		self.origin.x, self.origin.y
+	local minX, maxX = math.huge, -math.huge
+	local minY, maxY = math.huge, -math.huge
+
+	for i = 1, #self.config.vertices, 2 do
+		local vx, vy = self.config.vertices[i], self.config.vertices[i+1]
+		if vx < minX then minX = vx end
+		if vx > maxX then maxX = vx end
+		if vy < minY then minY = vy end
+		if vy > maxY then maxY = vy end
+	end
+
+	local ox, oy = 0, 0
+	return minX - ox, minY - oy, maxX - minX, maxY - minY
 end
 
-function Graphic:_canDraw()
+function Object:getWorldBounds()
+	local d = self:getBoundaryTransform()
+	local lx, ly, lw, lh = self:getLocalBounds()
+
+	local x0 = lx * d.m11 + ly * d.m21 + d.dx
+	local y0 = lx * d.m12 + ly * d.m22 + d.dy
+	local x1 = (lx + lw) * d.m11 + ly * d.m21 + d.dx
+	local y1 = (lx + lw) * d.m12 + ly * d.m22 + d.dy
+	local x2 = lx * d.m11 + (ly + lh) * d.m21 + d.dx
+	local y2 = lx * d.m12 + (ly + lh) * d.m22 + d.dy
+	local x3 = (lx + lw) * d.m11 + (ly + lh) * d.m21 + d.dx
+	local y3 = (lx + lw) * d.m12 + (ly + lh) * d.m22 + d.dy
+
+	local minX = math.min(x0, x1, x2, x3)
+	local minY = math.min(y0, y1, y2, y3)
+	local maxX = math.max(x0, x1, x2, x3)
+	local maxY = math.max(y0, y1, y2, y3)
+	d.minX, d.minY, d.maxX, d.maxY = minX, minY, maxX, maxY
+	return d
+end
+
+function Graphic:canDraw()
 	return (self.width > 0 or self.height > 0 or
-		#self.config.vertices ~= 0) and Graphic.super._canDraw(self)
+		#self.config.vertices ~= 0) and Graphic.super.canDraw(self)
+end
+
+local grap = love.graphics
+local function drawShape(gtype, fill, ox, oy, w, h, rad, config, ang1, ang2)
+	if gtype == "rectangle" then
+		grap.rectangle(fill, -ox, -oy, w, h, config.round[1], config.round[2], config.segments)
+	elseif gtype == "polygon" and config.vertices then
+		grap.translate(-ox, -oy)
+		grap.polygon(fill, config.vertices)
+		grap.translate(ox, oy)
+	elseif gtype == "circle" then
+		if w == h then
+			grap.circle(fill, rad - ox, rad - oy, rad, config.segments)
+		else
+			local hx, hy = w / 2, h / 2
+			grap.ellipse(fill, hx - ox, hy - oy, hx, hy, config.segments)
+		end
+	elseif gtype == "arc" then
+		grap.arc(fill, config.type, rad - ox, rad - oy, rad, ang1, ang2,
+			math.ceil(config.segments * math.min((ang2 - ang1) / (math.pi * 2), 1)))
+	end
 end
 
 function Graphic:__render(camera)
-	love.graphics.push("all")
-
-	local line = self.line
-	local linesize = line.width
-
-	love.graphics.setLineStyle(self.antialiasing and "smooth" or "rough")
-	love.graphics.setLineWidth(linesize)
-	love.graphics.setLineJoin(line.join)
+	grap.push("all")
 
 	local x, y, rad, sx, sy, ox, oy, kx, ky = self:setupDrawLogic(camera)
 	local w, h = self.width, self.height
+	local line = self.line
+	local linesize = line.width
+
+	grap.setLineStyle(self.antialiasing and "smooth" or "rough")
+	grap.setLineWidth(linesize)
+	grap.setLineJoin(line.join)
 
 	local config = self.config
-	local rnd, ang1, ang2 = config.round, 0, 0
+	local ang1, ang2 = 0, 0
 	if config.angle then
 		local pi180 = math.pi / 180
 		ang1, ang2 = config.angle[1] * pi180, config.angle[2] * pi180
 	end
 
+	local drawW, drawH = w, h
+	local drawX, drawY = x, y
 	if self.fill == "line" then
-		x, y = x + linesize / 2, y + linesize / 2
-		w, h = w - linesize, h - linesize
+		drawX, drawY = x + linesize / 2, y + linesize / 2
+		drawW, drawH = w - linesize, h - linesize
 	end
-	local rad = math.min(w, h) / 2
+	local circleRad = math.min(drawW, drawH) / 2
 
-	local color = self.color
+	grap.translate(drawX, drawY)
+	grap.rotate(rad)
+	grap.scale(sx, sy)
+	grap.shear(kx, ky)
 
-	love.graphics.translate(x, y)
-	love.graphics.rotate(math.rad(self.angle))
-	love.graphics.scale(sx, sy)
-	love.graphics.shear(kx, ky)
+	drawShape(self.type, self.fill, ox, oy, drawW, drawH, circleRad, config, ang1, ang2)
 
-	local function drawShape(type, fill)
-		if type == "rectangle" then
-			love.graphics.rectangle(fill, -ox, -oy, w, h, config.round[1], config.round[2], config.segments)
-		elseif type == "polygon" and config.vertices then
-			love.graphics.translate(-ox, -oy)
-			love.graphics.polygon(fill, config.vertices)
-		elseif type == "circle" then
-			if w == h then
-				love.graphics.circle(fill, rad - ox, rad - oy, rad, config.segments)
-			else
-				local x, y = w / 2, h / 2
-				love.graphics.ellipse(fill, x - ox, y - oy, x, y, config.segments)
-			end
-		elseif type == "arc" then
-			love.graphics.arc(fill, config.type, rad - ox, rad - oy, rad, ang1, ang2,
-				math.ceil(config.segments * math.min((ang2 - ang1) / math.pi / 2, 1)))
-		end
-	end
-
-	drawShape(self.type, self.fill)
 	if self.lined then
-		color = line.color
-		love.graphics.setColor(self:getDrawColor(color))
-		drawShape(self.type, "line")
+		grap.setColor(self:getDrawColor(line.color))
+		drawShape(self.type, "line", ox, oy, drawW, drawH, circleRad, config, ang1, ang2)
 	end
 
-	love.graphics.pop()
+	grap.pop()
 end
 
 return Graphic

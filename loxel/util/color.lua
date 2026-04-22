@@ -1,48 +1,87 @@
-local function fromRGB(r, g, b)
-	return {r / 255, g / 255, b / 255}
+local ffi = require("ffi")
+local bit = bit or require("bit")
+local color_c, ctype
+
+local color_mt = {
+	__index = function(self, k)
+		if k == 1 then return self.r
+		elseif k == 2 then return self.g
+		elseif k == 3 then return self.b
+		elseif k == 4 then return self.a
+		end
+	end,
+	__newindex = function(self, k, v)
+		if k == 1 then self.r = v
+		elseif k == 2 then self.g = v
+		elseif k == 3 then self.b = v
+		elseif k == 4 then self.a = v
+		end
+	end
+}
+
+if Project.flags.jitFFI then
+	-- this used to be a float type but it has random overflow problems in the 32bit binaries
+	ffi.cdef[[
+		typedef struct { double r, g, b, a; } color_c;
+	]]
+	color_c = ffi.typeof("color_c")
+	ffi.metatype(color_c, color_mt)
+else
+	color_c = function(r, g, b, a)
+		return setmetatable({r = r or 0, g = g or 0, b = b or 0, a = a or 1}, color_mt)
+	end
+end
+
+local function fromRGB(r, g, b, a)
+	return color_c(r / 255, g / 255, b / 255, a or 1)
 end
 
 local function fromHEX(hex)
-	return fromRGB(bit.band(bit.rshift(hex, 16), 0xFF),
-		bit.band(bit.rshift(hex, 8), 0xFF),
-		bit.band(hex, 0xFF))
+	hex = tonumber(hex)
+	return color_c(
+		bit.band(bit.rshift(hex, 16), 0xFF) / 255,
+		bit.band(bit.rshift(hex, 8), 0xFF) / 255,
+		bit.band(hex, 0xFF) / 255,
+		1
+	)
 end
 
----@class ColorTable
 local colorTable = {
 	BLACK   = fromHEX(0x000000),
-	BLUE    = fromHEX(0x0000FF),
+	BLUE	= fromHEX(0x0000FF),
 	BROWN   = fromHEX(0x8B4513),
-	CYAN    = fromHEX(0x00FFFF),
-	GRAY    = fromHEX(0x808080),
+	CYAN	= fromHEX(0x00FFFF),
+	GRAY	= fromHEX(0x808080),
 	GREEN   = fromHEX(0x008000),
-	LIME    = fromHEX(0x00FF00),
+	LIME	= fromHEX(0x00FF00),
 	MAGENTA = fromHEX(0xFF00FF),
 	ORANGE  = fromHEX(0xFFA500),
-	PINK    = fromHEX(0xFFC0CB),
+	PINK	= fromHEX(0xFFC0CB),
 	PURPLE  = fromHEX(0x800080),
-	RED     = fromHEX(0xFF0000),
+	RED	 = fromHEX(0xFF0000),
 	WHITE   = fromHEX(0xFFFFFF),
-	YELLOW  = fromHEX(0xFFFF00)
+	YELLOW  = fromHEX(0xFFFF00),
+	TRANSPARENT = fromHEX(0x00000000)
 }
 
----@class Color:ColorTable
 local Color = {}
 
 function Color.get(c)
 	local r, g, b, a
 
-	if type(c) == "table" then
-		r, g, b, a = c[1], c[2], c[3], c[4] or 1
+	if type(c) == "cdata" or type(c) == "table" then
+		r, g, b, a = c[1] or c.r, c[2] or c.g, c[3] or c.b, c[4] or c.a or 1
 		if r > 1 then
 			r, g, b, a = r / 255, g / 255, b / 255, a / 255
 		end
+	elseif type(c) == "string" then
+		local col = Color.fromString(c)
+		r, g, b, a = col.r, col.g, col.b, col.a
 	else
-		if type(c) == "string" then
-			c = c:gsub("#", "0x")
-		end
-		r, g, b, a = fromRawHEX(c)
+		local col = fromHEX(c)
+		r, g, b, a = col.r, col.g, col.b, col.a
 	end
+
 	return r, g, b, a
 end
 
@@ -55,18 +94,18 @@ function Color.HSLtoRGB(h, s, l)
 	local m = l - 0.5 * c
 	local r, g, b = m, m, m
 	if h == h then
-		local h = (h % 1.0) * 6.0
-		local x = c * (1 - math.abs(h % 2 - 1))
+		local h2 = (h % 1.0) * 6.0
+		local x = c * (1 - math.abs(h2 % 2 - 1))
 		c, x = c + m, x + m
-		if h < 1 then
+		if h2 < 1 then
 			r, g, b = c, x, m
-		elseif h < 2 then
+		elseif h2 < 2 then
 			r, g, b = x, c, m
-		elseif h < 3 then
+		elseif h2 < 3 then
 			r, g, b = m, c, x
-		elseif h < 4 then
+		elseif h2 < 4 then
 			r, g, b = m, x, c
-		elseif h < 5 then
+		elseif h2 < 5 then
 			r, g, b = x, m, c
 		else
 			r, g, b = c, m, x
@@ -97,46 +136,50 @@ function Color.RGBtoHSL(r, g, b)
 end
 
 function Color.fromHSL(...)
-	return {Color.HSL(...)}
+	local r, g, b = Color.HSLtoRGB(...)
+	return color_c(r, g, b, 1)
 end
 
 function Color.fromString(str)
-	str = str:gsub("#", "")
-	return Color.fromRGB(tonumber('0x' .. str:sub(1, 2)),
-		tonumber('0x' .. str:sub(3, 4)),
-		tonumber('0x' .. str:sub(5, 6)))
+	local hex = tonumber(str:gsub("[#x]", ""), 16)
+	return fromHEX(hex or 0)
 end
 
 function Color.convert(rgb)
-	return {rgb[1] / 255,
-		rgb[2] / 255,
-		rgb[3] / 255}
+	return color_c((rgb.r or rgb[1]) / 255,
+		(rgb.g or rgb[2]) / 255,
+		(rgb.b or rgb[3]) / 255,
+		1)
 end
 
-function Color.saturate(rgb, amount)
-	local h, s, l = Color.RGBtoHSL(rgb[1], rgb[2], rgb[3])
+function Color.saturate(col, amount)
+	local h, s, l = Color.RGBtoHSL(col.r or col[1], col.g or col[2], col.b or col[3])
 	s = math.min(1, math.max(0, s + amount))
-	return {Color.HSLtoRGB(h, s, l)}
+	local r, g, b = Color.HSLtoRGB(h, s, l)
+	return color_c(r, g, b, 1)
 end
 
 function Color.lerp(x, y, i)
-	return {math.lerp(x[1], y[1], i),
-		math.lerp(x[2], y[2], i),
-		math.lerp(x[3], y[3], i)}
+	return color_c(math.lerp(x.r or x[1], y.r or y[1], i),
+		math.lerp(x.g or x[2], y.g or y[2], i),
+		math.lerp(x.b or x[3], y.b or y[3], i),
+		1)
 end
 
 function Color.lerpDelta(x, y, i, delta)
-	return {math.lerp(y[1], x[1], math.exp(-(delta or game.dt) * i)),
-		math.lerp(y[2], x[2], math.exp(-(delta or game.dt) * i)),
-		math.lerp(y[3], x[3], math.exp(-(delta or game.dt) * i))}
+	local factor = math.exp(-(delta or game.dt) * i)
+	return color_c(math.lerp(y.r or y[1], x.r or x[1], factor),
+		math.lerp(y.g or y[2], x.g or x[2], factor),
+		math.lerp(y.b or y[3], x.b or x[3], factor),
+		1)
 end
 
 function Color.vec4(tbl, ...)
 	local args = {...}
-	local fill = table.clone(tbl)
+	local fill = {tbl.r or tbl[1], tbl.g or tbl[2], tbl.b or tbl[3], tbl.a or tbl[4] or 1}
 
 	local idx = 1
-	for i = #tbl + 1, 4 do
+	for i = (tbl.r and 5 or #tbl + 1), 4 do
 		if idx <= #args then
 			fill[i] = args[idx]
 			idx = idx + 1
@@ -150,7 +193,7 @@ end
 
 setmetatable(Color, {
 	__index = function(tbl, key)
-		if colorTable[key] then return table.clone(colorTable[key]) end
+		if colorTable[key] then return color_c(colorTable[key].r, colorTable[key].g, colorTable[key].b, colorTable[key].a) end
 	end
 })
 

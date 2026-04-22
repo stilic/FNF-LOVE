@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="limoDancer.png">
+	<!-- Created with Adobe Animate version 20.0.0.17400 -->
+	<!-- http://www.adobe.com/products/animate.html -->
+	<SubTexture name="hench dancing0000" x="0" y="0" width="394" height="394" frameX="0" frameY="-15" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0001" x="0" y="0" width="394" height="394" frameX="0" frameY="-15" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0002" x="404" y="0" width="394" height="391" frameX="0" frameY="-18" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0003" x="404" y="0" width="394" height="391" frameX="0" frameY="-18" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0004" x="404" y="0" width="394" height="391" frameX="0" frameY="-18" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0005" x="808" y="0" width="395" height="390" frameX="0" frameY="-19" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0006" x="808" y="0" width="395" height="390" frameX="0" frameY="-19" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0007" x="1213" y="0" width="389" height="385" frameX="-6" frameY="-24" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0008" x="1213" y="0" width="389" height="385" frameX="-6" frameY="-24" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0009" x="1612" y="0" width="249" height="358" frameX="-123" frameY="-52" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0010" x="1612" y="0" width="249" height="358" frameX="-123" frameY="-52" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0011" x="0" y="404" width="251" height="362" frameX="-121" frameY="-48" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0012" x="0" y="404" width="251" height="362" frameX="-121" frameY="-48" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0013" x="0" y="404" width="251" height="362" frameX="-121" frameY="-48" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0014" x="0" y="404" width="251" height="362" frameX="-121" frameY="-48" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0015" x="261" y="404" width="404" height="410" frameX="-113" frameY="0" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0016" x="261" y="404" width="404" height="410" frameX="-113" frameY="0" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0017" x="675" y="404" width="394" height="404" frameX="-120" frameY="-5" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0018" x="675" y="404" width="394" height="404" frameX="-120" frameY="-5" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0019" x="675" y="404" width="394" height="404" frameX="-120" frameY="-5" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0020" x="1079" y="404" width="395" height="404" frameX="-119" frameY="-5" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0021" x="1079" y="404" width="395" height="404" frameX="-119" frameY="-5" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0022" x="1484" y="404" width="395" height="402" frameX="-119" frameY="-7" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0023" x="1484" y="404" width="395" height="402" frameX="-119" frameY="-7" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0024" x="0" y="824" width="254" height="361" frameX="-141" frameY="-49" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0025" x="0" y="824" width="254" height="361" frameX="-141" frameY="-49" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0026" x="264" y="824" width="254" height="361" frameX="-139" frameY="-49" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0027" x="264" y="824" width="254" height="361" frameX="-139" frameY="-49" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0028" x="264" y="824" width="254" height="361" frameX="-139" frameY="-49" frameWidth="517" frameHeight="410"/>
+	<SubTexture name="hench dancing0029" x="264" y="824" width="254" height="361" frameX="-139" frameY="-49" frameWidth="517" frameHeight="410"/>
+</TextureAtlas>

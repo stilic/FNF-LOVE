@@ -3,6 +3,20 @@
 	because its in fixed length,
 	also probably change it to ffi datas
 ]]
+local rad, fastsin, fastcos = math.rad, math.fastsin, math.fastcos
+local max, min = math.max, math.min
+
+local ffi = require("ffi")
+
+ffi.cdef[[
+	typedef struct {
+		float x, y;
+		float u, v, w;
+		uint8_t r, g, b, a;
+	} ActorVertex;
+]]
+
+local VERTEX_SIZE = ffi.sizeof("ActorVertex")
 
 local Animation = loxreq "animation"
 
@@ -41,14 +55,16 @@ function ActorSprite:new(x, y, z, texture)
 		{1, 1, 0, 1, 1},
 		{0, 1, 0, 0, 1},
 	}
-	self.__vertices = {
-		{0, 0, 0, 0, 1},
-		{1, 0, 1, 0, 1},
-		{1, 1, 1, 1, 1},
-		{0, 1, 0, 1, 1},
-	}
-	self.mesh = ActorSprite.allMesh
 
+	self.vertexData = love.data.newByteData(VERTEX_SIZE * 4)
+	self.vertexArray = ffi.cast("ActorVertex*", self.vertexData:getFFIPointer())
+
+	for i = 0, 3 do
+		local ptr = self.vertexArray[i]
+		ptr.r, ptr.g, ptr.b, ptr.a = 255, 255, 255, 255
+	end
+
+	self.mesh = ActorSprite.allMesh
 	self.clipRect = nil
 
 	self.frames = nil
@@ -67,6 +83,9 @@ function ActorSprite:destroy()
 	ActorSprite.super.destroy(self)
 
 	self.texture = nil
+	if self.mesh ~= ActorSprite.allMesh then
+		self.mesh:setTexture()
+	end
 
 	self.__frames = nil
 	self.__animations = nil
@@ -74,7 +93,7 @@ end
 
 function ActorSprite:makeUniqueMesh()
 	if self.mesh and self.mesh ~= ActorSprite.allMesh then return end
-	self.mesh = love.graphics.newMesh(ActorSprite.vertexFormat, self.__vertices, "fan")
+	self.mesh = love.graphics.newMesh(ActorSprite.vertexFormat, self.vertices, "fan")
 end
 
 function ActorSprite:setDrawMode(mode)
@@ -85,18 +104,6 @@ end
 
 function ActorSprite:getDrawMode()
 	return self.mesh:getDrawMode()
-end
-
-function ActorSprite:destroy()
-	ActorSprite.super.destroy(self)
-
-	self.texture = nil
-	if self.mesh ~= ActorSprite.allMesh then
-		self.mesh:setTexture()
-	end
-
-	self.__frames = nil
-	self.__animations = nil
 end
 
 function ActorSprite:update(dt)
@@ -118,19 +125,18 @@ function ActorSprite:update(dt)
 	end
 end
 
-function ActorSprite:_canDraw()
+function ActorSprite:canDraw()
 	return self.texture ~= nil and (self.width ~= 0 or self.height ~= 0) and
-		ActorSprite.super._canDraw(self)
+		ActorSprite.super.canDraw(self)
 end
 
 function ActorSprite:__render(camera)
 	local r, g, b, a = love.graphics.getColor()
 	local shader = love.graphics.getShader()
 	local blendMode, alphaMode = love.graphics.getBlendMode()
-	local min, mag, anisotropy, mode
 
-	mode = self.antialiasing and "linear" or "nearest"
-	min, mag, anisotropy = self.texture:getFilter()
+	local mode = self.antialiasing and "linear" or "nearest"
+	local min, mag, anisotropy = self.texture:getFilter()
 	self.texture:setFilter(mode, mode, anisotropy)
 
 	local f = self:getCurrentFrame()
@@ -149,9 +155,10 @@ function ActorSprite:__render(camera)
 		local ax, ay = self.animation.curAnim:rotateOffset(self.angle, sx, sy)
 		x, y = x - ax, y - ay
 	end
+
 	if f and f.rotated then
 		ox, oy = ox - 0, oy - f.width + oy
-		rad = rad-math.pi/2
+		rz = rz - 90
 	end
 
 	local tw, th = self.texture:getWidth(), self.texture:getHeight()
@@ -166,20 +173,70 @@ function ActorSprite:__render(camera)
 	if self.flipX then uvx, uvw = uvx + uvw, -uvw end
 	if self.flipY then uvy, uvh = uvy + uvh, -uvh end
 
-	local mesh, verts, length = self.mesh, self.__vertices, #self.vertices
-	local vert, vx, vy, vz
-	for i, v in pairs(self.vertices) do
-		vert = verts[i] or table.new(5, 0)
-		verts[i] = vert
+	local hw, hh = game.width / 2, game.height / 2
+	local fovMult = self.fov / 180 / 200
 
-		vx, vy, vz = Actor.worldSpin(v[1] * fw, v[2] * fh, v[3] * sz, rx, ry, rz, ox, oy, oz)
-		vert[1], vert[2], vert[5] = Actor.toScreen(vx + x - ox, vy + y - oy, vz + z - oz, self.fov)
-		vert[3], vert[4] = (v[4] * uvw + uvx) * vert[5], (v[5] * uvh + uvy) * vert[5]
+	local radx, rady, radz = rad(rx), rad(ry), rad(rz)
+	local angx0, angx1 = fastcos(radx), fastsin(radx)
+	local angy0, angy1 = fastcos(rady), fastsin(rady)
+	local angz0, angz1 = fastcos(radz), fastsin(radz)
+
+	local m11 = angy0 * angz0
+	local m12 = -angz1 * angx0 + angx1 * angy1 * angz0
+	local m13 =  angx1 * angz1 + angx0 * angy1 * angz0
+	local m21 = -angy0 * angz1
+	local m22 = -(angx0 * angz0 + angx1 * angy1 * angz1)
+	local m23 = -(-angx1 * angz0 + angx0 * angy1 * angz1)
+	local m31 =  angy1
+	local m32 = -angx1 * angy0
+	local m33 = -angx0 * angy0
+
+	local vCount = #self.vertices
+	if not self.vertexArray or self.vertexData:getSize() < VERTEX_SIZE * vCount then
+		self.vertexData = love.data.newByteData(VERTEX_SIZE * vCount)
+		self.vertexArray = ffi.cast("ActorVertex*", self.vertexData:getFFIPointer())
+		for i = 0, vCount - 1 do
+			local ptr = self.vertexArray[i]
+			ptr.r, ptr.g, ptr.b, ptr.a = 255, 255, 255, 255
+		end
 	end
-	mesh:setDrawRange(1, length); mesh:setVertices(verts)
+
+	for i = 1, vCount do
+		local v = self.vertices[i]
+
+		local gapx = (v[1] * fw) - ox
+		local gapy = oy - (v[2] * fh)
+		local gapz = oz - (v[3] * sz)
+
+		local vx = ox + m11 * gapx + m12 * gapy + m13 * gapz
+		local vy = oy + m21 * gapx + m22 * gapy + m23 * gapz
+		local vz = oz + m31 * gapx + m32 * gapy + m33 * gapz
+
+		local z_calc = vz + z - oz
+		local z_proj = max((z_calc * fovMult) + 1, 0.00001)
+		local invZ = 1 / z_proj
+
+		local ptr = self.vertexArray[i - 1]
+		ptr.x = hw + (vx + x - ox - hw) * invZ
+		ptr.y = hh + (vy + y - oy - hh) * invZ
+		ptr.u = (v[4] * uvw + uvx) * invZ
+		ptr.v = (v[5] * uvh + uvy) * invZ
+		ptr.w = invZ
+
+		if v[6] then
+			ptr.r, ptr.g, ptr.b, ptr.a = v[6], v[7], v[8], v[9]
+		else
+			ptr.r, ptr.g, ptr.b, ptr.a = 255, 255, 255, 255
+		end
+	end
+
+	local mesh = self.mesh
+	mesh:setVertices(self.vertexData)
+	mesh:setDrawRange(1, vCount)
 
 	if mesh:getTexture() ~= self.texture then mesh:setTexture(self.texture) end
-	love.graphics.setShader(self.shader or defaultShader); love.graphics.setBlendMode(self.blend)
+	love.graphics.setShader(self.shader or defaultShader)
+	love.graphics.setBlendMode(self.blend)
 	love.graphics.setColor(self:getDrawColor())
 	love.graphics.draw(mesh)
 
@@ -188,9 +245,9 @@ function ActorSprite:__render(camera)
 	love.graphics.setShader(shader)
 end
 
-ActorSprite.updateHitbox = Sprite.updateHitbox
+ActorSprite.updateHitbox  = Sprite.updateHitbox
 ActorSprite.centerOffsets = Sprite.centerOffsets
-ActorSprite.fixOffsets = Sprite.fixOffsets
-ActorSprite.centerOrigin = Sprite.centerOrigin
+ActorSprite.fixOffsets    = Sprite.fixOffsets
+ActorSprite.centerOrigin  = Sprite.centerOrigin
 
 return ActorSprite

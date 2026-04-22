@@ -8,6 +8,9 @@ function MediaCard:new(x, y, icon, text, color)
 
 	self.color = color or {0.5, 0.5, 0.5}
 	self.config.round = {16, 16}
+	self.lined = false
+	self.line.color = {0.8, 0.7, 0.8}
+	self.time = 0
 end
 
 function MediaCard:setSize(width, height)
@@ -25,6 +28,9 @@ function MediaCard:update(dt)
 	MediaCard.super.update(self, dt)
 	self.icon:update(dt)
 	self.text:update(dt)
+
+	self.time = self.time + dt * 3
+	self.line.width = 2 * math.sin(self.time) / 2
 end
 
 function MediaCard:__render(camera)
@@ -34,6 +40,11 @@ function MediaCard:__render(camera)
 	self.text.scrollFactor = self.scrollFactor
 	self.icon:__render(camera)
 	self.text:__render(camera)
+end
+
+function MediaCard:setFocus(focus)
+	self.lined = focus
+	self.alpha = focus and 0.7 or 0.4
 end
 
 return MediaCard

@@ -12,6 +12,7 @@ function SpriteGroup:new(x, y)
 
 	self.__unusedCameraRenderQueue = {}
 	self.__cameraRenderQueue = {}
+	self.__preRenderQueued = {}
 
 	self:_initializeDrawFunctions()
 end
@@ -35,19 +36,20 @@ function SpriteGroup:__getNestDimension(members)
 	return xmin, xmax, ymin, ymax
 end
 
-function SpriteGroup:getWidth()
-	if not next(self.members) then return 0 end
-
+function SpriteGroup:__updateDimensions()
 	local xmin, xmax, ymin, ymax = self:__getNestDimension(self.members)
 	self.width, self.height = xmax - xmin, ymax - ymin
+end
+
+function SpriteGroup:getWidth()
+	if not next(self.members) then return 0 end
+	self:__updateDimensions()
 	return self.width
 end
 
 function SpriteGroup:getHeight()
 	if not next(self.members) then return 0 end
-
-	local xmin, xmax, ymin, ymax = self:__getNestDimension(self.members)
-	self.width, self.height = xmax - xmin, ymax - ymin
+	self:__updateDimensions()
 	return self.height
 end
 
@@ -77,11 +79,11 @@ function SpriteGroup:__drawNestGroup(members, camera, list, x2, y2, sf, force, z
 			sf2.x, sf2.y = sfx * sf.x, sfy * sf.y
 		end
 
-		if member.__cameraRenderQueue then
-			if Sprite.super._canDraw(member) and next(member:_prepareCameraDraw(camera, force)) then
+		if member.exists and member.__cameraRenderQueue then
+			if Sprite.super.canDraw(member) and #member:_prepareCameraDraw(camera, force) > 0 then
 				table.insert(list, member)
 			end
-		elseif member:_canDraw() then
+		elseif member:canDraw() then
 			if member.__render then
 				local x, y, w, h = member:getLocalBounds()
 
@@ -119,19 +121,18 @@ function SpriteGroup:_prepareCameraDraw(c, force)
 	return list
 end
 
-function SpriteGroup:_canDraw()
+function SpriteGroup:canDraw()
 	for c, list in pairs(self.__cameraRenderQueue) do
 		self.__cameraRenderQueue[c] = nil
 		table.insert(self.__unusedCameraRenderQueue, list)
 		table.clear(list)
 	end
 
-	-- skips the Sprite check
-	if Sprite.super._canDraw(self) then
+	if Sprite.super.canDraw(self) then
 		local yeah = false
 		for _, c in pairs(self.cameras or Camera.__defaultCameras) do
 			local list = self:_prepareCameraDraw(c, true)
-			yeah = yeah or next(list) ~= nil
+			yeah = yeah or #list > 0
 		end
 
 		return yeah
@@ -141,13 +142,13 @@ function SpriteGroup:_canDraw()
 end
 
 function SpriteGroup:_isOnScreen(x, y, w, h, sx, sy, ox, oy, sfx, sfy, camera)
-	return next(self:_prepareCameraDraw(camera)) ~= nil
+	return #self:_prepareCameraDraw(camera) > 0
 end
 
 function SpriteGroup:isOnScreen(cameras, force)
-	if cameras.x then return next(self:_prepareCameraDraw(cameras)) ~= nil end
+	if cameras.x then return #self:_prepareCameraDraw(cameras) > 0 end
 	for _, c in pairs(cameras) do
-		if next(self:_prepareCameraDraw(c, force)) then return true end
+		if #self:_prepareCameraDraw(c, force) > 0 then return true end
 	end
 	return false
 end
@@ -171,12 +172,13 @@ function SpriteGroup:__render(camera)
 
 	local a, b = camera.scroll, self.scrollFactor
 	for i, member in ipairs(list) do
-		if member.x then
+		local msf = member.scrollFactor
+		if msf then
 			local msc = member.scale
 			local pa, psx, psy, psz = member.angle, msc.x, msc.y, msc.z
 
 			love.graphics.push()
-			love.graphics.translate(a.x * member.scrollFactor.x * (1 - b.x), a.y * member.scrollFactor.y * (1 - b.y))
+			love.graphics.translate(a.x * msf.x * (1 - b.x), a.y * msf.y * (1 - b.y))
 
 			member.angle, msc.x, msc.y = pa + angle, psx * sx, psy * sy
 
@@ -258,6 +260,38 @@ function SpriteGroup:recycle(class, factory, revive) return self.group:recycle(c
 function SpriteGroup:clear() self.group:clear() end
 
 function SpriteGroup:focus(f) return self.group:focus(f) end
+
+function SpriteGroup:indexOf(obj) return self.group:indexOf(obj) end
+
+function SpriteGroup:insert(...) return self.group:insert(...) end
+
+function SpriteGroup:__preRender(willRender)
+	local queued = self.__preRenderQueued
+	if willRender then
+		table.clear(queued)
+		for _, list in pairs(self.__cameraRenderQueue) do
+			for _, m in ipairs(list) do
+				queued[m] = true
+			end
+		end
+	end
+
+	for _, member in ipairs(self.members) do
+		if member.__preRender then
+			local childWillRender = false
+			if willRender then
+				if member.__cameraRenderQueue then
+					childWillRender = Sprite.super.canDraw(member)
+				elseif member.members then
+					childWillRender = member:canDraw()
+				else
+					childWillRender = queued[member] == true
+				end
+			end
+			member:__preRender(childWillRender)
+		end
+	end
+end
 
 function SpriteGroup:kill()
 	self.group:kill(); Sprite.super.kill(self)

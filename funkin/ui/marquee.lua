@@ -1,152 +1,216 @@
-local Marquee = Text:extend("Marquee")
+local Marquee = Text:extend("Marquee", true)
 
-function Marquee:new(x, y, limit, velocity, content, font, color)
-	self.speed = velocity
-	self.pauseTime = 1.5
-	self.pauseTimer = self.pauseTime
-	self.scrollOffset = 0
-	self.isScrolling = false
-	self.spacing = 50
-	Marquee.super.new(self, x, y, content, font, color)
-	self.limit = limit or 200
+function Marquee:new(x, y, limit, velocity, content, font, color, align)
+	Marquee.super.new(self, x, y, content, font, color, align)
+
+	self._speed = velocity or 100
+	self._pauseTime = 1.5
+	self._pauseTimer = self._pauseTime
+	self._scrollOffset = 0
+	self._isScrolling = false
+	self._spacing = 50
+
+	self._fadeSize = 10
+	self._leftFadeWidth = 0
+	self._growthSpeed = 2.5
+
+	self._limit = limit or 200
+	self._canvas = nil
+	self._textObj = nil
+	self._fadeMesh = nil
+	self._outlineOffsets = nil
+	self.__force = true
+
+	self:__updateDimension()
+end
+
+function Marquee:set_content(v)
+	Marquee.super.set_content(self, v)
+	self.__force = true
+end
+
+function Marquee:set_font(v)
+	Marquee.super.set_font(self, v)
+	self.__force = true
+end
+
+function Marquee:set_limit(v)
+	Marquee.super.set_limit(self, v)
+	self.__force = true
+end
+
+function Marquee:set_outline(v)
+	Marquee.super.set_outline(self, v)
+	self.__force = true
 end
 
 function Marquee:update(dt)
 	Marquee.super.update(self, dt)
-	if self.width <= self.limit then return end
 
-	if not self.isScrolling then
-		self.pauseTimer = self.pauseTimer - dt
-		if self.pauseTimer <= 0 then
-			self.isScrolling = true
-		end
-	else
-		self.scrollOffset = self.scrollOffset + self.speed * dt
-		if self.scrollOffset >= self.width + self.spacing then
-			self.scrollOffset = 0
-			self.pauseTimer = self.pauseTime
-			self.isScrolling = false
-		end
+	if not self._limit or not self.width or self.width <= self._limit then
+		self._leftFadeWidth = 0
+		return
 	end
-	if self.canRender then -- insane shit but its fucked up on render due to transformations
-	-- no love.graphics.origin() won't do it
-		self.canvas:renderTo(function()
-			love.graphics.clear(0, 0, 0, 0)
-			self:__renderText(-self.scrollOffset)
-			self:__renderText(-self.scrollOffset + self.width + self.spacing)
-		end)
-		self.canRender = nil
+
+	if not self._isScrolling then
+		self._pauseTimer = self._pauseTimer - dt
+		if self._leftFadeWidth > 0 then
+			self._leftFadeWidth = math.max(0, self._leftFadeWidth - dt * self._speed * self._growthSpeed)
+			self.__force = true
+		end
+		if self._pauseTimer <= 0 then self._isScrolling = true end
+	else
+		if self._leftFadeWidth < self._fadeSize then
+			self._leftFadeWidth = math.min(self._fadeSize, self._leftFadeWidth + dt * self._speed * self._growthSpeed)
+			self.__force = true
+		end
+
+		self._scrollOffset = self._scrollOffset + self._speed * dt
+		if self._scrollOffset >= self.width + self._spacing then
+			self._scrollOffset = 0
+			self._pauseTimer = self._pauseTime
+			self._isScrolling = false
+			self._leftFadeWidth = 0
+		end
 	end
 end
 
 function Marquee:__updateDimension()
-	if self.__content == self.content and self.__font == self.font and
-		self.__limit == self.limit then return end
-	self.__content = self.content
-	self.__limit = self.limit
-	self.__font = self.font
+	if not self._limit then return end
 
-	if not self.font then return end
+	if self.__content == self._content and self.__font == self._font and
+	   self.__limit == self._limit then return end
 
-	self.width = self.font:getWidth(self.content)
-	self.height = self.font:getHeight()
+	self.__content = self._content
+	self.__limit = self._limit
+	self.__font = self._font
+	if not self._font then return end
 
-	if self.width > (self.limit or -1) then
-		self:updateCanvas()
+	local str = tostring(self._content)
+	self.width = self._font:getWidth(str)
+	self.height = self._font:getHeight()
+
+	if self._textObj then self._textObj:release() end
+	self._textObj = love.graphics.newText(self._font, str)
+
+	if self._outline and self._outline.width > 0 and self._outline.style == "normal" then
+		self._outlineOffsets = {}
+		local step = (2 * math.pi) / self._outline.precision
+		for i = 1, self._outline.precision do
+			self._outlineOffsets[i] = {
+				x = math.cos(i * step) * self._outline.width,
+				y = math.sin(i * step) * self._outline.width
+			}
+		end
+	end
+
+	if self._canvas then self._canvas:release(); self._canvas = nil end
+	if self.width > self._limit then
+		self._canvas = love.graphics.newCanvas(self._limit, self.height, { msaa = 0, dpiscale = 1 })
+
+		local vertices = {
+			{0, 0, 0, 0, 1, 1, 1, 1},
+			{1, 0, 0, 0, 1, 1, 1, 1},
+			{1, 1, 0, 0, 1, 1, 1, 1},
+			{0, 1, 0, 0, 1, 1, 1, 1},
+		}
+		self._fadeMesh = love.graphics.newMesh(vertices, "fan", "dynamic")
 	end
 end
 
-function Marquee:updateCanvas()
-	if self.canvas then self.canvas:release() end
+function Marquee:__preRender(willRender)
+	if not willRender then return end
+	if not self._canvas or not self._limit then return end
 
-	self.canvas = love.graphics.newCanvas(self.limit, self.height)
-	self.canvas:renderTo(function()
+	if self._isScrolling or self.__force then
+		self.__force = false
+		self:__updateDimension()
+
+		local w, h = self._limit, self.height
+		local f = self._fadeSize
+		local l = self._leftFadeWidth
+
+		local r, g, b, a = love.graphics.getColor()
+		local bMode, bAlpha = love.graphics.getBlendMode()
+
+		love.graphics.setCanvas(self._canvas)
 		love.graphics.clear(0, 0, 0, 0)
-		self:__renderText(-self.scrollOffset)
-		self:__renderText(-self.scrollOffset + self.width + self.spacing)
-	end)
+
+		love.graphics.setBlendMode("alpha", "premultiplied")
+		love.graphics.setColor(1, 1, 1, 1)
+
+		self:__renderTextInternal(-self._scrollOffset)
+		self:__renderTextInternal(-self._scrollOffset + self.width + self._spacing)
+
+		love.graphics.setBlendMode("multiply", "premultiplied")
+
+		self._fadeMesh:setVertex(1, 0, 0, 0, 0, 1, 1, 1, 1)
+		self._fadeMesh:setVertex(2, f, 0, 0, 0, 0, 0, 0, 0)
+		self._fadeMesh:setVertex(3, f, h, 0, 0, 0, 0, 0, 0)
+		self._fadeMesh:setVertex(4, 0, h, 0, 0, 1, 1, 1, 1)
+		love.graphics.draw(self._fadeMesh, w - f, 0)
+
+		if l > 0 then
+			local copyPos = -self._scrollOffset + self.width + self._spacing
+			if copyPos > l then
+				self._fadeMesh:setVertex(1, 0, 0, 0, 0, 0, 0, 0, 0)
+				self._fadeMesh:setVertex(2, l, 0, 0, 0, 1, 1, 1, 1)
+				self._fadeMesh:setVertex(3, l, h, 0, 0, 1, 1, 1, 1)
+				self._fadeMesh:setVertex(4, 0, h, 0, 0, 0, 0, 0, 0)
+				love.graphics.draw(self._fadeMesh, 0, 0)
+			end
+		end
+
+		love.graphics.setCanvas()
+		love.graphics.setColor(r, g, b, a)
+		love.graphics.setBlendMode(bMode, bAlpha)
+	end
 end
 
-function Marquee:__renderText(x)
-	love.graphics.push("all")
+function Marquee:__renderTextInternal(x)
+	if not self._textObj then return end
 
-	---@diagnostic disable-next-line: unbalanced-assignments
-	local rad, sx, sy, ox, oy = 0, 1, 1
+	local outline = self._outline
 	if not self.antialiasing then x = math.floor(x) end
 
-	local content, align, outline = self.content, self.alignment, self.outline
-	local width, font = self.width, self.font
-
-	love.graphics.setFont(self.font)
-
-	local min, mag, anisotropy = self.font:getFilter()
-	local mode = self.antialiasing and "linear" or "nearest"
-
-	if outline then
-		love.graphics.setColor(self:getDrawColor(outline.color))
+	if outline and outline.width > 0 then
 		if outline.style == "simple" then
-			love.graphics.printf(content,
-				x + outline.offset.x, outline.offset.y,
-				width, align, rad, sx, sy, ox, oy)
-		elseif outline.width > 0 and outline.style == "normal" then
-			local step = (2 * math.pi) / outline.precision
-			for i = 1, outline.precision do
-				local dx = math.cos(i * step) * outline.width
-				local dy = math.sin(i * step) * outline.width
-				if outline.antialiasing ~= nil then
-					local omode = outline.antialiasing and "linear" or "nearest"
-					self.font:setFilter(omode, omode, anisotropy)
-				end
-				love.graphics.printf(content, x + dx, dy,
-					width, align, rad, sx, sy, ox, oy)
+			love.graphics.draw(self._textObj, x + outline.offset.x, outline.offset.y)
+		elseif outline.style == "normal" and self._outlineOffsets then
+			for i = 1, #self._outlineOffsets do
+				local off = self._outlineOffsets[i]
+				love.graphics.draw(self._textObj, x + off.x, off.y)
 			end
 		end
 	end
-	self.font:setFilter(mode, mode, anisotropy)
 
-	love.graphics.setColor(self:getDrawColor())
-	love.graphics.printf(content, x, 0, width, align, rad, sx, sy, ox, oy)
-
-	self.font:setFilter(min, mag, anisotropy)
-	love.graphics.pop()
+	love.graphics.draw(self._textObj, x, 0)
 end
 
 function Marquee:__render(camera)
-	if self.width <= self.limit then
+	if not self.width or not self._limit or self.width <= self._limit then
 		return Marquee.super.__render(self, camera)
 	end
 
-	self.canRender = true
+	local x, y, rad, sx, sy, ox, oy, kx, ky = self:setupDrawLogic(camera)
+	if self._canvas then
+		local filter = self.antialiasing and "linear" or "nearest"
+		self._canvas:setFilter(filter, filter)
 
-	love.graphics.push("all")
-	local r, g, b = love.graphics.getColor()
-	local x, y, rad, sx, sy, ox, oy, kx, ky = self:setupDrawLogic(camera, false)
-	if not self.antialiasing then x, y = math.floor(x), math.floor(y) end
-	love.graphics.setShader(self.shader)
-	local mode = self.antialiasing and "linear" or "nearest"
-	self.canvas:setFilter(mode, mode)
-	love.graphics.setBlendMode(self.blend)
-	love.graphics.setColor(r, g, b, self.alpha)
-	love.graphics.draw(self.canvas, x, y, rad, sx, sy, ox, oy, kx, ky)
-	love.graphics.pop()
-end
-
-function Marquee:getLocalBounds()
-	local x, y = 0, 0
-	if self.offset ~= nil then x, y = x - self.offset.x, y - self.offset.y end
-	local w, h = self.limit ~= nil and self.limit or self:getWidth(), self:getHeight()
-
-	if self.outline then
-		x, y, w, h = x - self.outline.width, y - self.outline.width,
-			w + self.outline.width, h + self.outline.width
+		love.graphics.draw(self._canvas, x, y, rad, sx, sy, ox, oy, kx, ky)
 	end
-
-	return x, y, w, h
 end
 
 function Marquee:destroy()
-	if self.canvas then self.canvas:release() end
+	if self._canvas then self._canvas:release() end
+	if self._textObj then self._textObj:release() end
+	if self._fadeMesh then self._fadeMesh:release() end
 	Marquee.super.destroy(self)
 end
+
+Marquee.__setters.content = Marquee.set_content
+Marquee.__setters.font    = Marquee.set_font
+Marquee.__setters.limit   = Marquee.set_limit
+Marquee.__setters.outline = Marquee.set_outline
 
 return Marquee

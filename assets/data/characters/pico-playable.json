@@ -1,55 +1,30 @@
 {
   "version": "1.0.0",
-  "name": "Pico",
-  "renderType": "multisparrow",
-  "assetPath": "characters/Pico_FNF_assetss",
+  "name": "Pico (Playable)",
+  "assetPath": "characters/pico/pico",
+  "renderType": "animateatlas",
+  "healthIcon": {
+    "id": "pico",
+    "flipX": false
+  },
+  "offsets": [0, -30],
   "flipX": true,
-  "singTime": 8.0,
   "animations": [
-    {
-      "name": "idle",
-      "prefix": "Pico Idle Dance",
-      "offsets": [3, 0]
-    },
-    {
-      "name": "singUP",
-      "prefix": "pico Up note0",
-      "offsets": [21, 27]
-    },
-    {
-      "name": "singDOWN",
-      "prefix": "Pico Down Note0",
-      "offsets": [84, -80]
-    },
-    {
-      "name": "singDOWNmiss",
-      "prefix": "Pico Down Note MISS",
-      "offsets": [80, -38]
-    },
-    {
-      "name": "singUPmiss",
-      "prefix": "pico Up note miss",
-      "offsets": [28, 67]
-    },
-    {
-      "name": "singRIGHT",
-      "prefix": "Pico Note Right0",
-      "offsets": [-48, 2]
-    },
-    {
-      "name": "singLEFT",
-      "prefix": "Pico NOTE LEFT0",
-      "offsets": [85, -10]
-    },
-    {
-      "name": "singRIGHTmiss",
-      "prefix": "Pico Note Right Miss",
-      "offsets": [-45, 50]
-    },
-    {
-      "name": "singLEFTmiss",
-      "prefix": "Pico NOTE LEFT miss",
-      "offsets": [83, 28]
-    }
+    {"name": "idle", "prefix": "idle"},
+    {"name": "singRIGHT", "prefix": "right"},
+    {"name": "singDOWN", "prefix": "down"},
+    {"name": "singUP", "prefix": "up"},
+    {"name": "singLEFT", "prefix": "left"},
+
+    {"name": "singLEFTmiss", "prefix": "miss left"},
+    {"name": "singDOWNmiss", "prefix": "miss down"},
+    {"name": "singUPmiss", "prefix": "miss up"},
+    {"name": "singRIGHTmiss", "prefix": "miss right"},
+
+    {"name": "shootMISS", "prefix": "hit can"},
+    {"name": "weekend-1-cockgun", "prefix": "cock"},
+    {"name": "weekend-1-firegun", "prefix": "shoot hip"},
+    {"name": "hey", "prefix": "hey"},
+    {"name": "cheer", "prefix": "cheer"}
   ]
 }

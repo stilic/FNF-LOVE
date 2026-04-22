@@ -6,10 +6,6 @@ local closedEnv = setmetatable({}, {
 	__newindex = function() error("closed") end,
 })
 
--- script sandboxing
--- avoid game crashing / executing malicious code
--- http://lua-users.org/wiki/SandBoxes
--- this looks unclean i know -kaoy
 local function errformat(s, thread)
 	local i = debug.getinfo(thread or 3, "Sln")
 	Logger.log("warn", ("%i: %s not allowed"):format(i.short_src, i.currentline, s), 4)
@@ -41,16 +37,21 @@ local function limitindex(name, blocklist)
 		__newindex = deny(name .. " new indexing")
 	}
 
-	-- uhh workaround
 	if name == "Script" then
 		mt.__call = function(_, ...) return Script(...) end
 	end
 	return setmetatable({}, mt)
 end
 
+-- script sandboxing
+-- avoids executing malicious code
+-- http://lua-users.org/wiki/SandBoxes
+-- this looks unclean i know -kaoy
+
 local blocklist, modules = {
 	"loxreq", "dofile", "loadfile", "loadstring", "load", "module",
-	"rawset", "rawget", "rawequal", "setfenv", "getfenv", "newproxy"
+	"rawset", "rawget", "rawequal", "setfenv", "getfenv", "newproxy",
+	"_G", "_VERSION", "collectgarbage", "gcinfo", "coroutine"
 }, {
 	debug = noindex("debug"),
 	package = noindex("package"),
@@ -86,12 +87,29 @@ modules.require = function(path)
 
 	if paths.exists(paths.getPath(path), "directory") and
 		paths.exists(paths.getPath(path .. "/init.lua"), "file") then
-		local scr = Script("data/classes/" .. path .. "/init")
+		local scr = Script("data/classes/" .. path .. "/init", nil, nil, nil, true)
 		return scr.chunk()
 	end
 
-	local scr = Script("data/classes/" .. path)
+	local scr = Script("data/classes/" .. path, nil, nil, nil, true)
 	return scr.chunk()
+end
+
+modules.getmetatable = function(t)
+	if type(t) == "string" then return nil end
+
+	local mt = getmetatable(t)
+	if mt and type(mt) == "table" and mt.__metatable then
+		return mt.__metatable
+	end
+	return mt
+end
+
+modules.setmetatable = function(t, mt)
+	if type(t) ~= "table" then
+		error("Cannot set metatable of non-table types")
+	end
+	return setmetatable(t, mt)
 end
 
 local mtenv = {
@@ -109,7 +127,7 @@ Script.messages = Signal()
 Script.Event_Continue = 1
 Script.Event_Cancel = 2
 
-function Script:new(path, notFoundMsg, noLink, fullPath)
+function Script:new(path, notFoundMsg, noLink, fullPath, isLibrary)
 	self.path = path
 	self.variables = {}
 	self.notFoundMsg = (notFoundMsg == nil and true or false)
@@ -137,11 +155,13 @@ function Script:new(path, notFoundMsg, noLink, fullPath)
 				Script.messages:dispatch(self.path, ...)
 			end)
 
-			self.receiveFunc = function(...)
-				self:call("receive", ...)
-				self.__failedfunc["receive"] = nil
+			if not isLibrary then
+				self.receiveFunc = function(...)
+					self:call("receive", ...)
+					self.__failedfunc["receive"] = nil
+				end
+				Script.messages:add(self.receiveFunc)
 			end
-			Script.messages:add(self.receiveFunc)
 
 			setfenv(chunk, setmetatable(vars, mtenv))
 			if not noLink then
@@ -160,8 +180,8 @@ function Script:new(path, notFoundMsg, noLink, fullPath)
 
 	if not s then
 		Logger.log("error", string.format('Failed to load %s: %s', path, err))
-		self:close()
 		self.errorCallback:dispatch("chunk")
+		self:close()
 	end
 end
 
@@ -188,8 +208,6 @@ function Script:linkObject(link)
 				cur.__index[k] or cur.__index(s, k)
 		end,
 		__newindex = function(_, k, v)
-			-- avoid overriding functions
-			-- was other method but it kinda fucked up callbacks
 			if k ~= nil and link[k] ~= nil and type(link[k]) ~= "function" then
 				link[k] = v; return
 			end
@@ -223,17 +241,45 @@ function Script:call(func, ...)
 end
 
 function Script:close()
-	if self.variables then table.clear(self.variables) end
+	if self.closed then return end
+	self:call("onClose")
+
 	if self.chunk then setfenv(self.chunk, closedEnv) end
+
+	self.closed = true
+
+	if self.closeCallback then
+		self.closeCallback:dispatch()
+		self.closeCallback:destroy()
+	end
+	if self.errorCallback then
+		self.errorCallback:destroy()
+	end
+
+	if self.receiveFunc then
+		Script.messages:remove(self.receiveFunc)
+		self.receiveFunc = nil
+	end
+
+	if self.variables then
+		setmetatable(self.variables, nil)
+		table.clear(self.variables)
+	end
+
 	self.variables = nil
 	self.chunk = nil
-	self.__failedfunc = {}
+	self.errorCallback = nil
+	self.closeCallback = nil
+	self.__failedfunc = nil
+	self.path = nil
+	self.notFoundMsg = nil
+end
 
-	if not self.closed then
-		self.closed = true
-		self.closeCallback:dispatch()
-		Script.messages:remove(self.receiveFunc)
-	end
+if jit and jit.off then
+	jit.off(Script.new)
+	jit.off(Script.call)
+	jit.off(Script.linkObject)
+	jit.off(Script.close)
 end
 
 return Script

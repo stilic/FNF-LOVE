@@ -15,6 +15,10 @@ function string:split(sep, t)
 	return split_t
 end
 
+function string:replace(pattern, rep) -- note: you could just do gsub instead of replace
+	return self:gsub("%" .. pattern, rep)
+end
+
 -- see https://luajit.org/extensions.html
 local s, table_new = pcall(require, "table.new")
 if not s then function table_new( --[[narray, nhash]]) return {} end end
@@ -275,26 +279,21 @@ end
 ---@return string -- The current device. (`Desktop` or `Mobile`)
 
 local function ischromeos()
-	local f, c, n = {
-		"/etc/lsb-release",
-		"/opt/google/chrome/chrome",
-		"/usr/share/chromeos-assets"
-	}
-	for _, p in pairs(f) do
-		c = io.open(p, "r")
-		if c then
-			n = c:read("*all")
-			c:close()
-			if n and n:match("CHROMEOS") then return true end
-		end
-	end
-	return false
+	local f = io.open("/system/build.prop", "r")
+	if not f then return false end
+	local content = f:read("*all")
+	f:close()
+	if not content then return false end
+
+	return content:match("ro%.product%.device=%S+_cheets") ~= nil
+		or content:match("ro%.build%.flavor=cheets") ~= nil
+		or content:match("ro%.boot%.chromeos_channel=") ~= nil
 end
 
 function love.system.getDevice()
 	local os = love.system.getOS()
 	if os == "Android" or os == "iOS" then
-		return (not os == "iOS" and ischromeos()) and "Desktop" or "Mobile"
+		return (os == "Android" and ischromeos()) and "Desktop" or "Mobile"
 	elseif os == "OS X" or os == "Windows" or os == "Linux" then
 		return "Desktop"
 	end
@@ -364,3 +363,5 @@ if --[[not love.markDeprecated actually this is better and]] debug then
 		print(__warning__:format(info.source:sub(2), info.currentline, what, name, extra or __none__))
 	end
 end
+
+-- LOVE 12 REIMPLEMENTATIONS

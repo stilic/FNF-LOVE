@@ -1,10 +1,10 @@
 {
   "version": "1.0.0",
   "name": "Nene",
-  "assetPath": "characters/Nene",
+  "assetPath": "characters/nene/Nene",
   "startingAnimation": "danceRight",
   "renderType": "multisparrow",
-  "offsets": [0, -100],
+  "offsets": [-40, -220],
   "animations": [
     {
       "name": "danceLeft",
@@ -58,10 +58,9 @@
       "offsets": [0, 52]
     },
     {
-      "name": "raiseKnife-hold",
+      "name": "idleKnife",
       "prefix": "KnifeIdle0",
-      "offsets": [-99, 52],
-      "looped": false
+      "offsets": [-99, 52]
     },
     {
       "name": "lowerKnife",
@@ -71,14 +70,14 @@
     {
       "name": "hairBlowNormal",
       "prefix": "HairBlow0",
-      "assetPath": "characters/Nene_Hair_Blowing",
+      "assetPath": "characters/nene/Nene_Hair_Blowing",
       "frameIndices": [0, 1, 2, 3, 0, 1, 2, 3],
       "offsets": [0, 0]
     },
     {
       "name": "hairFallNormal",
       "prefix": "HairBlow0",
-      "assetPath": "characters/Nene_Hair_Blowing",
+      "assetPath": "characters/nene/Nene_Hair_Blowing",
       "frameIndices": [
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
       ],
@@ -88,13 +87,13 @@
       "name": "hairBlowKnife",
       "prefix": "HairBlowKnife0",
       "frameIndices": [0, 1, 2, 3, 0, 1, 2, 3],
-      "assetPath": "characters/Nene_Hair_Blowing",
+      "assetPath": "characters/nene/Nene_Hair_Blowing",
       "offsets": [-79, 51]
     },
     {
       "name": "hairFallKnife",
       "prefix": "HairBlowKnife0",
-      "assetPath": "characters/Nene_Hair_Blowing",
+      "assetPath": "characters/nene/Nene_Hair_Blowing",
       "frameIndices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
       "offsets": [-79, 51]
     }

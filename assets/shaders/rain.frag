@@ -1,6 +1,6 @@
 #pragma language glsl3;
+#pragma GCC optimize("Ofast");
 
-// effect doesn't even appears on mediump
 precision highp float;
 
 uniform float time;
@@ -8,28 +8,29 @@ uniform float scale;
 uniform float intensity;
 uniform float distortionStrength;
 
-const float RAIN_SPEED = 8.0;
+const float RAIN_SPEED = 800.0;
+const float INV_SCALE = 0.1;
+const float Y_SCALE = 0.03;
 
 float rand(vec2 co) {
 	return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-highp float rainDrop(vec2 p, float sc, out float distortAmount) {
-	p *= 0.1;
+float rainDrop(vec2 p, float sc, out float distortAmount) {
+	p *= INV_SCALE;
 	p.x += p.y * 0.1;
-	p.y -= time * (RAIN_SPEED * 100.0) / sc;
-	p.y *= 0.03;
+	p.y -= time * RAIN_SPEED / sc;
+	p.y *= Y_SCALE;
 
-	float ix = floor(p.x);
-	float iy = floor(p.y);
-	vec2 idx = vec2(ix, iy);
+	vec2 idx = floor(p);
+	float ix = idx.x;
 
 	p.y += mod(ix, 2.0) * 0.5 + (rand(vec2(ix)) - 0.5) * 0.3;
-	iy = floor(p.y);
-	idx = vec2(ix, iy);
+	idx.y = floor(p.y);
 
-	p -= vec2(ix, iy);
+	p -= idx;
 	p.x += (rand(idx.yx) * 2.0 - 1.0) * 0.35;
+
 	vec2 d = abs(p - 0.5);
 	float drop = max(d.x * 0.8, d.y * 0.5) - 0.1;
 
@@ -39,40 +40,45 @@ highp float rainDrop(vec2 p, float sc, out float distortAmount) {
 		distortAmount = smoothstep(0.0, 0.4, -drop) * smoothstep(0.0, 0.2, center);
 	}
 
-	bool empty = rand(idx) < mix(1.0, 0.1, intensity);
-	return empty ? 1.0 : drop;
+	return (rand(idx) < mix(1.0, 0.1, intensity)) ? 1.0 : drop;
 }
 
 vec4 effect(mediump vec4 color, Image tex, mediump vec2 uv, mediump vec2 screen_coords) {
 	vec2 pos = screen_coords;
-	vec2 originalPos = pos;
-
 	vec2 distortedUV = uv;
-	float totalDistortion = 0.0;
-	float maxDistortScale = 3.0;
-	float rainAmount = 0.0;
 
-	float scales[3] = float[3](1.0, 2.0, 3.0);
+	float rainSum = 0.0;
+	vec3 accumulator = vec3(0.0);
 
-	for (int i = 0; i < 3; i++) {
+	float scales[4];
+	scales[0] = 1.0;
+	scales[1] = 1.8;
+	scales[2] = 2.6;
+	scales[3] = 4.8;
+
+	float offsets[4];
+	offsets[0] = 0.0;
+	offsets[1] = 500.0;
+	offsets[2] = 1000.0;
+	offsets[3] = 1500.0;
+
+	for (int i = 0; i < 4; i++) {
 		float sc = scales[i];
-		float offset = float(i) * 500.0;
-		float distortAmount;
+		float dummy;
+		float r = rainDrop(pos * sc / scale + offsets[i], sc, dummy);
 
-		float drop = rainDrop(pos * sc / scale + offset, sc, distortAmount);
-
-		if (drop < 0.0) {
-			vec2 dir = normalize(pos - originalPos + vec2(0.01, 0.01));
-
-			float distFactor = distortAmount * distortionStrength * (sc / maxDistortScale);
-			distortedUV += dir * distFactor;
-			totalDistortion += distFactor;
-			rainAmount += (1.0 - rainAmount) * 0.75;
+		if (r < 0.0) {
+			float v = (1.0 - exp(r * 5.0)) / sc * 2.0;
+			distortedUV.x += v * 0.01 * distortionStrength;
+			distortedUV.y -= v * 0.002 * distortionStrength;
+			accumulator += vec3(0.1, 0.15, 0.2) * v;
+			rainSum += (1.0 - rainSum) * 0.75;
 		}
 	}
 
 	vec4 texcolor = Texel(tex, distortedUV);
-	vec3 rainAtmosphere = vec3(0.4, 0.5, 0.8);
-	vec3 finalColor = mix(texcolor.rgb, rainAtmosphere, 0.1 * rainAmount);
-	return vec4(finalColor, texcolor.a);
+	vec3 finalRGB = texcolor.rgb + accumulator;
+	finalRGB = mix(finalRGB, vec3(0.4, 0.5, 0.8), 0.1 * rainSum);
+
+	return vec4(finalRGB, texcolor.a);
 }

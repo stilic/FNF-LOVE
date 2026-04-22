@@ -7,6 +7,15 @@ function PopUpScoreEvent:new()
 	self.hideScore = false
 end
 
+function PopUpScoreEvent:recycle()
+	PopUpScoreEvent.super.recycle(self)
+
+	self.hideRating = false
+	self.hideScore = false
+
+	return self
+end
+
 function PopUpScoreEvent:cancelRating()
 	self.hideRating = true
 end

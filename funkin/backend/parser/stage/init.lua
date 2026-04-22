@@ -1,5 +1,4 @@
 local f = "funkin.backend.parser.stage."
-
 local vslice = require(f..'vslice')
 
 local StageParse = {}

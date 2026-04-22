@@ -1,4 +1,4 @@
-local CancellableEvent = Object:extend("CancellableEvent")
+local CancellableEvent = Basic:extend("CancellableEvent")
 
 CancellableEvent.cancelled = false
 CancellableEvent.__continueCalls = true
@@ -14,6 +14,8 @@ function CancellableEvent:recycle()
 	self.data = {}
 	self.cancelled = false
 	self.__continueCalls = true
+
+	return self
 end
 
 return CancellableEvent

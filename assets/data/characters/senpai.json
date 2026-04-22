@@ -1,17 +1,39 @@
 {
-	"animations": [
-		["idle", "Senpai Idle", [], 24, false, [1, 0]],
-		["singUP", "SENPAI UP NOTE", [], 24, false, [5, 37]],
-		["singRIGHT", "SENPAI RIGHT NOTE", [], 24, false, [0, 0]],
-		["singLEFT", "SENPAI LEFT NOTE", [], 24, false, [40, 0]],
-		["singDOWN", "SENPAI DOWN NOTE", [], 24, false, [14, 0]]
-	],
-	"position": [150, 360],
-	"camera_points": [-240, -330],
-	"flip_x": false,
-	"icon": "senpai-pixel",
-	"sprite": "characters/senpai",
-	"antialiasing": false,
-	"sing_duration": 8,
-	"scale": 6
+  "version": "1.0.0",
+  "name": "Senpai",
+  "assetPath": "characters/senpai",
+  "singTime": 8.0,
+  "isPixel": true,
+  "scale": 6,
+  "healthIcon": {
+    "id": "senpai",
+    "isPixel": true
+  },
+  "animations": [
+    {
+      "name": "idle",
+      "prefix": "Senpai Idle instance 10",
+      "offsets": [0, 0]
+    },
+    {
+      "name": "singLEFT",
+      "prefix": "SENPAI LEFT NOTE instance 10",
+      "offsets": [6.6, 0]
+    },
+    {
+      "name": "singDOWN",
+      "prefix": "SENPAI DOWN NOTE instance 10",
+      "offsets": [2.33, 0]
+    },
+    {
+      "name": "singUP",
+      "prefix": "SENPAI UP NOTE instance 10",
+      "offsets": [0.83, 6.16]
+    },
+    {
+      "name": "singRIGHT",
+      "prefix": "SENPAI RIGHT NOTE instance 10",
+      "offsets": [0, 0]
+    }
+  ]
 }

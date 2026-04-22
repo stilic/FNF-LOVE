@@ -50,7 +50,6 @@ function SelectionList:query(name)
 	return results
 end
 
-
 function SelectionList:update(dt)
 	SelectionList.super.update(self, dt)
 

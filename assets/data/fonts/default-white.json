@@ -1,14 +1,21 @@
 {
 	"name": "default-white",
-	"offsets": [0, -52],
+	"offsets": [0, 0],
 
 	"glyphs": {
-		"'": ["-apostraphie-", [0, 48]],
-		"-": ["-dash-"],
+		"f": ["f", [0, 9]],
+		"g": ["g", [0, 12]],
+		"j": ["j", [0, 12]],
+		"p": ["p", [0, 12]],
+		"q": ["q", [0, 12]],
+		"y": ["y", [0, 12]],
+
+		"'": ["-apostraphie-", [0, -34]],
+		"-": ["-dash-", [0, -10]],
 		"&": ["-andpersand-"],
 		"\\": ["-back slash-"],
 		"/": ["-forward slash-"],
-		",": ["-comma-"],
+		",": ["-comma-", [-6, 14]],
 		"“": ["-start quote-"],
 		"”": ["-end quote-"],
 		"\"": ["-end quote-"],

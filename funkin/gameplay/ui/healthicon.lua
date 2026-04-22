@@ -84,6 +84,7 @@ function HealthIcon:changeIcon(icon)
 
 	local isSparrow = paths.exists(paths.getPath("images/" .. path .. ".xml"), "file")
 	self.isLegacyStyle = not isSparrow and not paths.exists(paths.getPath("images/" .. path .. ".txt"), "file")
+	self.animation:reset()
 	if self.isLegacyStyle then
 		self:loadTexture(paths.getImage(path))
 		if math.round(self.width / self.height) > 1 then

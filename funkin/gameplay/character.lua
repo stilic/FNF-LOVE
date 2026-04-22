@@ -21,10 +21,14 @@ function Character:new(x, y, char, isPlayer)
 	self.data = data
 
 	local fullpath = paths.getPath('images/' .. data.sprite)
-	if paths.exists(fullpath, "directory") then
-		self._animAtlas = AnimateAtlas(x, y, paths.getAnimateAtlas(data.sprite))
+	if paths.exists(fullpath, "directory") and paths.exists(fullpath .. "/Animation.json", "file") then
+		self._animAtlas = AnimateAtlas(0, 0, paths.getAnimateAtlas(data.sprite))
+	elseif paths.exists(paths.getPath('images/' .. data.sprite .. ".xml", "file"))
+			or paths.exists(paths.getPath('images/' .. data.sprite .. ".txt", "file")) then
+		self:setFrames(paths.getAtlas(data.sprite, not data.antialiasing))
 	else
-		self:setFrames(paths.getAtlas(data.sprite))
+		Logger.log("error", "Character \"" .. char .. "\" has invalid image path: \"" .. fullpath .. "\"")
+		self.exists = false
 	end
 
 	self.anim = self._animAtlas and self._animAtlas.animation or self.animation
@@ -32,7 +36,6 @@ function Character:new(x, y, char, isPlayer)
 	if data.scale and data.scale ~= 1 then
 		self:setGraphicSize(math.floor(self.width * data.scale))
 		self.scale:set(data.scale, data.scale)
-		self:updateHitbox()
 	end
 
 	self.icon = data.icon or char
@@ -47,7 +50,8 @@ function Character:new(x, y, char, isPlayer)
 		for _, an in pairs(data.animations) do
 			local anim, name, indices, fps, loop, offset, atlas = unpack(an)
 
-			if not self._animAtlas and atlas and atlas ~= "" and not atlasAdded[atlas] then
+			if not self._animAtlas and atlas and atlas ~= "" and not atlasAdded[atlas] and
+					(paths.exists(atlas .. ".xml", "file") or paths.exists(atlas .. ".txt", "file")) then
 				self.frames:addCollection(paths.getAtlas(atlas))
 				atlasAdded[atlas] = true
 			end
@@ -56,7 +60,8 @@ function Character:new(x, y, char, isPlayer)
 				if not self._animAtlas then
 					self.anim:addByIndices(anim, name, indices, nil, fps, loop)
 				else
-					self.anim:addByIndices(anim, name, indices, fps, loop)
+					local success = self.anim:addFromLibraryIndices(anim, name, "", indices, fps, loop)
+					if not success then self.anim:addByIndices(anim, name, indices, fps, loop) end
 				end
 			else
 				if not self._animAtlas then
@@ -79,13 +84,14 @@ function Character:new(x, y, char, isPlayer)
 		self.anim:rename("singLEFTmiss", "singRIGHTmiss")
 		self.anim:rename("singLEFT-loop", "singRIGHT-loop")
 		self.anim:rename("singLEFT-end", "singRIGHT-end")
+		self.anim:rename("danceLeft", "danceRight")
 	end
 
 	local position, x, y = Point()
 	if data.position then
 		x, y = unpack(data.position)
 		if self.__reverseDraw then
-			x = x + self.width / (self.isPlayer and -4 or 4)
+			x = x + self:getWidth() / (self.isPlayer and -4 or 4)
 		end
 		position:set(x, y)
 	end
@@ -105,11 +111,22 @@ function Character:new(x, y, char, isPlayer)
 	self.anim.onFinish:add(bind(self, self.__animFinished))
 
 	if self.isPlayer then self.flipX = not self.flipX end
-	self:updateHitbox()
 
-	self.isDanced = self.anim:has('danceLeft') and self.anim:has('danceRight')
+	if self.anim:has('danceLeft') and self.anim:has('danceRight') then
+		self.idleAnims = {'danceLeft', 'danceRight'}
+	else
+		self.idleAnims = {'idle'}
+	end
+	self.idleIndex = 1
+
 	self:setPosition(self.x + position.x, self.y + position.y)
 	self.type = type
+
+	self:dance()
+	self.anim:finish()
+
+	self:updateHitbox()
+	if self._animAtlas then self._animAtlas:centerOrigin() end
 end
 
 function Character:__animFinished(name)
@@ -186,25 +203,15 @@ end
 function Character:sing(dir, type, force)
 	local anim = "sing" .. Character.directions[dir + 1]:upper()
 	if type then
-		local typedAnim = anim .. (type == "miss" and type or "-" .. type)
-		if self.anim:has(typedAnim) then
-			anim = typedAnim
-		end
+		local altAnim = anim .. (type == "miss" and type or "-" .. type)
+		if self.anim:has(altAnim) then anim = altAnim end
 	end
-	if self.anim:has(anim) then
-		self:playAnim(anim, force ~= false)
-		self.dirAnim = dir
-	else
-		self.dirAnim = nil
-	end
+	self:playAnim(anim, force ~= false)
 
+	self.dirAnim = type == "miss" and nil or dir
 	self.lastHit = PlayState.conductor.time
-
-	if self.isDanced then
-		self.danced = anim:startsWith("singLEFT")
-		if anim == "singUP" or anim == "singDOWN" then
-			self.danced = not self.danced
-		end
+	if #self.idleAnims == 2 then
+		self.idleIndex = (anim:startsWith("singLEFT") or anim == "singUP") and 2 or 1
 	end
 end
 
@@ -213,11 +220,10 @@ function Character:dance(force)
 	if result == nil then result = true end
 	if not result then return end
 
-	if self.isDanced then
-		self.danced = not self.danced
-		self:playAnim(self.danced and "danceLeft" or "danceRight", force)
-	elseif self.anim:has("idle") then
-		self:playAnim("idle", force)
+	local animToPlay = self.idleAnims[self.idleIndex]
+	if animToPlay and self.anim:has(animToPlay) then
+		self:playAnim(animToPlay, force)
+		self.idleIndex = (self.idleIndex % #self.idleAnims) + 1
 	end
 end
 
@@ -225,44 +231,87 @@ function Character:hasAnim(name)
 	return self.anim:has(name)
 end
 
-function Character:getMidpoint(...)
+function Character:getWidth()
 	if self._animAtlas then
-		return self._animAtlas:getMidpoint(...)
+		return self._animAtlas.width
 	end
-	return Character.super.getMidpoint(self, ...)
+	return self.width
+end
+
+function Character:getHeight()
+	if self._animAtlas then
+		return self._animAtlas.height
+	end
+	return self.height
+end
+
+function Character:getMidpoint()
+	return self.x + self:getWidth() / 2, self.y + self:getHeight() / 2
 end
 
 function Character:updateHitbox()
 	if self._animAtlas then
 		local at = self._animAtlas
 		at:updateHitbox()
-		self.width, self.height = at.width, at.height
-		self.__width, self.__height = self.width, self.height
-		-- self.offset:set(at.offset.x, at.offset.y)
-		-- self.origin:set(at.origin.x, at.origin.y)
+		self.offset:set(at.offset.x, at.offset.y)
+		self.origin:set(at.origin.x, at.origin.y)
+
+		local ox, oy = self._animAtlas:getBoundTopLeft()
+		self.offset:set(self.offset.x + ox * (self.flipX and -1 or 1),
+			self.offset.y + oy * (self.flipY and -1 or 1))
 	else
 		Character.super.updateHitbox(self)
 	end
 end
 
-function Character:isOnScreen(...)
-	if self._animAtlas then return true end
-	return Character.super.isOnScreen(self, ...)
+function Character:__preRender(willRender)
+	if self._animAtlas and self:canDraw() then
+		self._animAtlas:__preRender(willRender)
+	end
 end
 
-function Character:_isOnScreen(c, ...)
-	if self._animAtlas then return true end
-	return Character.super._isOnScreen(self, c, ...)
+function Character:getLocalBounds()
+	if self._animAtlas then return self._animAtlas:getLocalBounds() end
+	return Character.super.getLocalBounds(self)
 end
 
-function Character:_getBoundary(...)
-	if self._animAtlas then return end
-	return Character.super._getBoundary(self, ...)
+function Character:canDraw()
+	if self._animAtlas then return self.alpha > 0 and self.visible and self.exists end
+	return Character.super.canDraw(self)
 end
 
-function Character:_canDraw()
-	if self._animAtlas then return Object._canDraw(self) end
-	return Character.super._canDraw(self)
+function Character:getBoundaryTransform()
+	if self._animAtlas then
+		local d = self._data
+		local x, y = self.x, self.y
+		local ox, oy, offx, offy = self.origin.x, self.origin.y, self.offset.x, self.offset.y
+		local ang = math.rad(self.angle)
+		local sx, sy = self.scale.x * self.zoom.x, self.scale.y * self.zoom.y
+		local kx, ky = self.skew.x, self.skew.y
+
+		if self.flipX then sx = -sx end
+		if self.flipY then sy = -sy end
+
+		if self.anim and self.anim.curAnim then
+			local ax, ay = self.anim.curAnim:rotateOffset(self.angle, sx, sy)
+			x, y = x - ax, y - ay
+		end
+
+		local dx, dy = x + ox - offx, y + oy - offy
+		local s, c = math.fastsin(ang), math.fastcos(ang)
+
+		d.m11 = c * sx - ky * s * sy
+		d.m12 = s * sx + ky * c * sy
+		d.m21 = kx * c * sx - s * sy
+		d.m22 = kx * s * sx + c * sy
+
+		d.dx = dx - (ox * d.m11 + oy * d.m21)
+		d.dy = dy - (ox * d.m12 + oy * d.m22)
+
+		return d
+	end
+
+	return Character.super.getBoundaryTransform(self)
 end
 
 function Character:__render(camera)
@@ -274,6 +323,13 @@ function Character:__render(camera)
 	else
 		Character.super.__render(self, camera)
 	end
+end
+
+function Character:destroy()
+	if self._animAtlas then
+		self._animAtlas:destroy()
+	end
+	Character.super.destroy(self)
 end
 
 return Character

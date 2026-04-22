@@ -1,21 +1,71 @@
 {
-	"animations": [
-		["singLEFT", "Dad Sing Note LEFT", [], 24, false, [-9, 10]],
-		["singDOWN", "Dad Sing Note DOWN", [], 24, false, [0, -30]],
-		["singUP", "Dad Sing Note UP", [], 24, false, [-6, 50]],
-		["singRIGHT", "Dad Sing Note RIGHT", [], 24, false, [0, 27]],
-		["idle", "Dad idle dance", [], 24, false, [0, 0]],
-		["idle-loop", "Dad idle dance", [10, 11, 12, 12], 24, true, [0, 0]],
-		["singLEFT-loop", "Dad Sing Note LEFT", [12, 13, 14, 15], 24, true, [-9, 10]],
-		["singRIGHT-loop", "Dad Sing Note RIGHT", [15, 16, 17, 18], 24, true, [0, 27]],
-		["singUP-loop", "Dad Sing Note UP", [56, 57, 58, 59], 24, true, [-6, 50]]
-	],
-	"position": [0, 0],
-	"camera_points": [0, 0],
-	"flip_x": false,
-	"icon": "dad",
-	"sprite": "characters/DADDY_DEAREST",
-	"antialiasing": true,
-	"sing_duration": 8,
-	"scale": 1
+  "version": "1.0.0",
+  "name": "Daddy Dearest",
+  "assetPath": "shared:characters/dad",
+  "renderType": "animateatlas",
+  "singTime": 8.0,
+  "offsets": [2, 16],
+  "cameraOffsets": [-2, 19],
+  "animations": [
+    {
+      "name": "idle",
+      "prefix": "Dad idle dance",
+      "offsets": [0, 0]
+    },
+    {
+      "name": "idle-hold",
+      "prefix": "Dad idle dance",
+      "looped": true,
+      "frameIndices": [11, 12, 13],
+      "offsets": [0, 0]
+    },
+    {
+      "name": "singLEFT",
+      "prefix": "dad sing note right",
+      "offsets": [21, 3]
+    },
+    {
+      "name": "singLEFT-hold",
+      "prefix": "dad sing note right",
+      "looped": true,
+      "frameIndices": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      "offsets": [21, 3]
+    },
+    {
+      "name": "singDOWN",
+      "prefix": "Dad Sing Note DOWN",
+      "offsets": [-37, -5]
+    },
+    {
+      "name": "singDOWN-hold",
+      "prefix": "Dad Sing Note DOWN",
+      "looped": true,
+      "frameIndices": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      "offsets": [-37, -5]
+    },
+    {
+      "name": "singUP",
+      "prefix": "Dad Sing note UP",
+      "offsets": [-5, 29]
+    },
+    {
+      "name": "singUP-hold",
+      "prefix": "Dad Sing note UP",
+      "looped": true,
+      "frameIndices": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      "offsets": [-5, 29]
+    },
+    {
+      "name": "singRIGHT",
+      "prefix": "Dad Sing Note LEFT",
+      "offsets": [-44, 12]
+    },
+    {
+      "name": "singRIGHT-hold",
+      "prefix": "Dad Sing Note LEFT",
+      "looped": true,
+      "frameIndices": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+      "offsets": [-44, 12]
+    }
+  ]
 }

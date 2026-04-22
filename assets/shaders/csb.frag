@@ -17,14 +17,14 @@ vec3 csb(vec3 color, vec3 adj) {
 
 vec4 effect(vec4 color, Image tex, vec2 coords, vec2 _) {
 	vec4 pixel = Texel(tex, coords);
-	vec3 modif; vec4 final;
+	if (pixel.a == 0.0) { discard; }
+	vec3 modif;
 
 	if (isGraphic) {
 		modif = csb(color.rgb, modifier);
-		final = vec4(modif, color.a);
+		return vec4(modif, color.a);
 	} else {
 		modif = csb(pixel.rgb, modifier);
-		final = vec4(modif, pixel.a) * color;
+		return vec4(modif, pixel.a) * color;
 	}
-	return final;
 }

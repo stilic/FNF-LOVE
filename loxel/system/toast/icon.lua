@@ -1,7 +1,7 @@
 local Icon = {}
 
 function Icon.make(size, color, type)
-	local canvas = love.graphics.newCanvas(size, size, {msaa = 8})
+	local canvas = love.graphics.newCanvas(size, size, {msaa = 4, dpiscale = 2})
 	canvas:renderTo(function()
 		love.graphics.push("all")
 		local x, y = size / 2, size / 2
@@ -64,7 +64,7 @@ function Icon.make(size, color, type)
 	end)
 
 	local data = canvas:newImageData()
-	local image = love.graphics.newImage(data)
+	local image = love.graphics.newImage(data, {dpiscale = 2})
 	canvas:release(); data:release()
 	return image
 end

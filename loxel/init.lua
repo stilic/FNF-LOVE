@@ -1,12 +1,17 @@
+local ffi = require "ffi"
+
 loxreq = setmetatable({path = (...) .. "."}, {
 	__call = function(_, f) return require(loxreq.path .. f) end
 })
 
 require "love.window"
 loxreq "lib.override"
+ogprint = print
 
 Project = require "project"
 Logger = loxreq "system.logger"
+
+RenderUtil = loxreq "util.render"
 
 local isMobile = love.system.getDevice() == "Mobile"
 
@@ -23,80 +28,64 @@ if Project.flags.loxelInitWindow then
 	love.window.setVSync(Project.VSync and 1 or 0)
 end
 
-local __step__, __quit__ = "step", "quit"
+local STEP, QUIT = "step", "quit"
 local dt, fps = 0, 0
-local sleep = love.timer.sleep
-
-local eventhandlers = {
-	keypressed = function(t, b, s, r) return love.keypressed(b, s, r, t) end,
-	keyreleased = function(t, b, s) return love.keyreleased(b, s, t) end,
-	joystickpressed = function(t, j, b) if love.joystickpressed then return love.joystickpressed(j, b, t) end end,
-	joystickreleased = function(t, j, b) if love.joystickreleased then return love.joystickreleased(j, b, t) end end,
-	gamepadpressed = function(t, j, b) if love.gamepadpressed then return love.gamepadpressed(j, b, t) end end,
-	gamepadreleased = function(t, j, b) if love.gamepadreleased then return love.gamepadreleased(j, b, t) end end,
-	touchpressed = function(t, id, x, y, dx, dy, p) return love.touchpressed(id, x, y, dx, dy, p, t) end,
-	touchmoved = function(t, id, x, y, dx, dy, p) return love.touchmoved(id, x, y, dx, dy, p, t) end,
-	touchreleased = function(t, id, x, y, dx, dy, p) return love.touchreleased(id, x, y, dx, dy, p, t) end,
-}
 
 function love.run()
-	love.FPScap, love.unfocusedFPScap = Project.FPS, 16
-	love.autoPause = Project.flags.loxelInitialAutoPause
-	love.vsync = Project.vSync
+	local cg, l, floor, Project = collectgarbage, love, math.floor, Project
+	local timer, graphics, event, window = l.timer, l.graphics, l.event, l.window
 
-	if love.math then love.math.setRandomSeed(os.time()) end
-	if love.load then love.load(love.arg.parseGameArguments(arg), arg) end
+	l.FPScap, l.unfocusedFPScap, l.autoPause = Project.FPS, 16, Project.flags.loxelInitialAutoPause
+	l.vsync = Project.vSync; if window.setVSync then window.setVSync(l.vsync and 1 or 0) end
+	if l.math then l.math.setRandomSeed(os.time()) end
+	if l.load then l.load(l.arg.parseGameArguments(arg), arg) end
 
-	love.timer.step(); collectgarbage()
+	timer.step(); cg()
 
-	local origin, clear, present = love.graphics.origin, love.graphics.clear, love.graphics.present
-	local getBgColor, draw = love.graphics.getBackgroundColor, love.draw
-	local pump, poll = love.event.pump, love.event.poll()
-	local focused, clock, nextdraw, cap = true, 0, 0, 0
-	local prevFpsUpdate, sinceLastFps, frames = love.timer.getTime(), 0, 0
+	local step, getTime, sleep, gcint, gctimer = timer.step, timer.getTime, timer.sleep, 2, 0
+	local origin, clear, present = graphics.origin, graphics.clear, graphics.present
+	local getBgColor, isActive = graphics.getBackgroundColor, graphics.isActive
+	local pump, poll, handlers = event.pump, event.poll, l.handlers
+	local update, draw, heartbeat, quit = l.update, l.draw, l.heartbeat, l.quit
+	local clock, acc, prevfpsu, frames, cap, focused, lastfps, lt = 0, 0, 0, getTime(), 0, 0, true, 0, 0
 
-	local function event(name, a, ...)
-		if name == __quit__ and not love.quit() then
-			return a or 0, ...
-		end
-		if eventhandlers[name] then return eventhandlers[name](clock, a, ...) end
-		return love.handlers[name](a, ...)
-	end
+	local registry = {}; for k, v in pairs(l.handlers) do registry[k] = v end
+	registry['keypressed']	   = function(b, s, r, _,_,_, t) return l.keypressed(b, s, r, t) end
+	registry['keyreleased']	  = function(b, s, _,_,_,_, t) return l.keyreleased(b, s, t) end
+	registry['touchpressed']	 = function(id, x, y, dx, dy, p, t) return l.touchpressed(id, x, y, dx, dy, p, t) end
+	registry['touchmoved']	   = function(id, x, y, dx, dy, p, t) return l.touchmoved(id, x, y, dx, dy, p, t) end
+	registry['touchreleased']	= function(id, x, y, dx, dy, p, t) return l.touchreleased(id, x, y, dx, dy, p, t) end
+	registry['joystickpressed']  = function(j, b, _,_,_,_, t) if l.joystickpressed then return l.joystickpressed(j, b, t) end end
+	registry['joystickreleased'] = function(j, b, _,_,_,_, t) if l.joystickreleased then return l.joystickreleased(j, b, t) end end
+	registry['gamepadpressed']   = function(j, b, _,_,_,_, t) if l.gamepadpressed then return l.gamepadpressed(j, b, t) end end
+	registry['gamepadreleased']  = function(j, b, _,_,_,_, t) if l.gamepadreleased then return l.gamepadreleased(j, b, t) end end
 
 	return function()
 		pump()
-		for name, a, b, c, d, e, f in poll do
-			a, b = event(name, a, b, c, d, e, f)
-			if a then return a, b end
+		clock = getTime()
+		for name, a, b, c, d, e, f in poll() do
+			if name == QUIT and not quit() then return a or 0; else
+			local h = registry[name]; if h then h(a, b, c, d, e, f, clock) end end
 		end
 
-		cap = 1 / (focused and love.FPScap or love.unfocusedFPScap)
-		dt, clock = love.timer.step(), love.timer.getTime()
-		if focused or not love.autoPause then
-			love.update(dt);
-			if love.graphics.isActive() and clock > nextdraw - dt then
-				if love.vsync ~= nil and love.window.setVSync then
-					love.window.setVSync(love.vsync and 1 or 0)
-				end
-				origin(); clear(getBgColor()); love.draw(); present()
-				nextdraw, sinceLastFps, frames = cap + clock, clock - prevFpsUpdate, frames + 1
-				if sinceLastFps > 0.5 then
-					fps, prevFpsUpdate, frames = math.round(frames / sinceLastFps), clock, 0
-				end
+		dt = step()
+		acc, cap = acc + dt, 1 / (focused and l.FPScap or l.unfocusedFPScap)
+		if focused or not l.autoPause then
+			update(dt)
+			lt = lt + dt
+			if lt >= 1 then lt = lt - 1; if heartbeat then heartbeat() end end
+			if isActive() and acc >= cap then
+				origin(); clear(getBgColor()); draw(); present()
+				frames, lastfps, acc = frames + 1, clock - prevfpsu, acc - cap
+				if acc > cap then acc = 0 end
+				if lastfps >= 1 then fps, frames, prevfpsu = floor(frames / lastfps + 0.5), 0, clock end
 			end
 		end
-
-		if love.window.hasFocus() then
-			sleep(dt < 0.001 and 0.001 or 0)
-			collectgarbage(__step__)
-			focused = true
+		if window.hasFocus() then
+			focused = true; sleep(0.001); cg(STEP)
 		else
-			if focused then
-				collectgarbage(); collectgarbage()
-			else
-				collectgarbage(__step__)
-			end
-			focused = sleep(cap)
+			if focused then cg(); cg() else cg(STEP) end
+			focused = sleep(cap - acc > 0.001 and cap - acc or 0.001)
 		end
 	end
 end
@@ -140,15 +129,13 @@ else
 end
 
 function love.errorhandler_quit()
-	if channel_event_active then channel_event_active:push(0) end
 	pcall(love.quit, true)
 end
 
-local Gamestate = loxreq "lib.gamestate"
 Classic = loxreq "lib.classic"
+Stub = loxreq "stub"
 
 Point = loxreq "util.point"
-
 Basic = loxreq "basic"
 Object = loxreq "object"
 Sound = loxreq "sound"
@@ -203,7 +190,7 @@ local function getram()
 			handle:close()
 			return tonumber(result:match("%d+"))
 		end
-	elseif os == "OSX" or jit.os == "BSD" then
+	elseif os == "OSX" or os == "BSD" then
 		handle = io.popen("sysctl -n hw.memsize 2>/dev/null || sysctl -n hw.physmem")
 		if handle then
 			result = handle:read("*all")
@@ -222,6 +209,9 @@ game = {
 	scroll = {x = 0, y = 0},
 	super = metatemp,
 
+	renderScale = 1,
+	renderOffset = Point(),
+
 	width = -1,
 	height = -1,
 	isSwitchingState = false,
@@ -230,6 +220,7 @@ game = {
 	keys = loxreq "input.keyboard",
 	mouse = loxreq "input.mouse",
 	touch = loxreq "input.touch",
+	state = loxreq "managers.statemanager",
 	cameras = loxreq "managers.cameramanager",
 	sound = loxreq "managers.soundmanager",
 	save = loxreq "util.save",
@@ -238,7 +229,9 @@ game = {
 		arch = jit.arch,
 		os = love.system.getOS(),
 		device = love.system.getDevice(),
-		ram = getram()
+		ram = getram(),
+
+		power = {state = "unknown", percent = 0}
 	}
 }
 
@@ -249,9 +242,12 @@ TextInput = Signal()
 
 local function triggerCallback(callback, ...) if callback then callback(...) end end
 
-function game.getState(front) return front and Gamestate.current() or Gamestate.stack[1] end
+function game.getState(front) return front and game.state.current() or game.state.stack[1] end
 
-function game.resetState(force, ...) game.switchState(getmetatable(game.getState())(...), force) end
+function game.resetState(force, ...)
+	game.switchState(getmetatable(game.getState())(...), force)
+	collectgarbage()
+end
 
 function game.discardTransition() (game.getState() or metatemp):discardTransition() end
 
@@ -268,15 +264,17 @@ function game.switchState(state, force)
 		if game.getState() == stateOnCall then
 			requestedState = state
 		else
-			print("startOutro callback was called after the state was switched. This will be ignored.")
+			Logger.log("warn", "startOutro callback was called after the state was switched. This will be ignored.")
 		end
 	end)
 end
 
-function game.openSubstate(substate) return Gamestate.push(substate) end
+function game.openSubstate(substate)
+	return game.state.push(substate)
+end
 
 function game.closeSubstate(substate)
-	Gamestate.pop(table.find(Gamestate.stack, substate))
+	game.state.pop(table.find(game.state.stack, substate))
 	for _, o in pairs(substate.members) do
 		if type(o) == "table" and o.destroy then o:destroy() end
 	end
@@ -285,6 +283,8 @@ end
 function game.init(app, state, ...)
 	local width, height = app.width, app.height
 	game.width, game.height = width, height
+
+	RenderUtil.init()
 
 	Toast.init(love.graphics.getDimensions())
 	game:add(Toast)
@@ -301,7 +301,7 @@ function game.init(app, state, ...)
 	love.mouse.setVisible(false)
 
 	triggerCallback(game.onPreStateEnter, state)
-	Gamestate.switch(state(...))
+	game.state.switch(state(...))
 end
 
 function game.keypressed(...) game.keys.onPressed(...) end
@@ -346,27 +346,42 @@ local function switch(state)
 
 	triggerCallback(game.onPreStateSwitch, state)
 
-	for _, s in ipairs(Gamestate.stack) do
+	for _, s in ipairs(game.state.stack) do
 		for _, o in pairs(s.members) do
 			if type(o) == "table" and o.destroy then o:destroy() end
 		end
 		if s.substate then
-			Gamestate.pop(table.find(Gamestate.stack, s.substate))
+			game.state.pop(table.find(game.state.stack, s.substate))
 			for _, o in pairs(s.substate.members) do
 				if type(o) == "table" and o.destroy then o:destroy() end
 			end
 			s.substate = nil
 		end
-		collectgarbage()
 	end
 
 	triggerCallback(game.onPreStateEnter, state)
 
-	Gamestate.switch(state)
+	game.state.switch(state)
 	game.isSwitchingState = false
 
 	triggerCallback(game.onPostStateSwitch, state)
-
+	jit.flush()
+	collectgarbage("collect")
+	if game.system.os == "Linux" then
+		pcall(function()
+			ffi.cdef[[void malloc_trim(size_t);]]
+			ffi.C.malloc_trim(0)
+		end)
+	elseif game.system.os == "Windows" then
+		pcall(function()
+			ffi.cdef[[
+				void* GetProcessHeap();
+				size_t HeapCompact(void* hHeap, uint32_t dwFlags);
+			]]
+			ffi.C.HeapCompact(ffi.C.GetProcessHeap(), 0)
+		end)
+	end
+	collectgarbage()
 	collectgarbage()
 end
 
@@ -392,7 +407,7 @@ function game.update(real_dt)
 		Tween.update(dt)
 	end
 
-	if not game.isSwitchingState then Gamestate.update(dt) end
+	if not game.isSwitchingState then game.state.update(dt) end
 	for _, o in ipairs(game.bound.members) do triggerCallback(o.update, o, dt) end
 	for _, o in ipairs(game.members) do triggerCallback(o.update, o, dt) end
 
@@ -403,123 +418,76 @@ function game.update(real_dt)
 	game.touch.reset()
 end
 
+function game.heartbeat()
+	local state, percent = love.system.getPowerInfo()
+	game.system.power.state, game.system.power.percent = state, percent or -1
+end
+
 function game.resize(w, h)
 	if Project.adaptableWidth then
-		local ratio = w / h
-		Project.width = math.floor(Project.height * ratio)
-		game.width = Project.width
-		love.window.updateMode(Project.width, Project.height)
+		local ratio, ratio2 = w / h, game.width / game.height
+		local should = math.max(ratio, ratio2) ~= ratio2
+		if should then
+			game.width = math.floor(game.height * ratio)
+			Transition.width = game.width
+			for _, c in pairs(game.cameras.list) do
+				c:resize(game.width, game.height)
+			end
+		end
 	end
-	Gamestate.resize(w, h)
+	game.state.resize(w, h)
 	for _, o in ipairs(game.bound.members) do triggerCallback(o.resize, o, w, h) end
 	for _, o in ipairs(game.members) do triggerCallback(o.resize, o, w, h) end
 end
 
 function game.focus(f)
 	game.sound.onFocus(f)
-	Gamestate.focus(f)
+	game.state.focus(f)
 	for _, o in ipairs(game.bound.members) do triggerCallback(o.focus, o, f) end
 	for _, o in ipairs(game.members) do triggerCallback(o.focus, o, f) end
 end
 
 function game.fullscreen(f)
-	Gamestate.fullscreen(f)
+	game.state.fullscreen(f)
 	for _, o in ipairs(game.bound.members) do triggerCallback(o.fullscreen, o, f) end
 	for _, o in ipairs(game.members) do triggerCallback(o.fullscreen, o, f) end
 end
 
 function game.quit()
-	Gamestate.quit()
+	game.state.quit()
 	for _, o in ipairs(game.bound.members) do triggerCallback(o.quit, o) end
 	for _, o in ipairs(game.members) do triggerCallback(o.quit, o) end
 end
 
-local _ogGetScissor, _ogSetScissor, _ogIntersectScissor
-local _scX, _scY, _scW, _scH, _scSX, _scSY, _scvX, _scvY, _scvW, _scvH
-local function getScissor() return _scvX, _scvY, _scvW, _scvH end
-local function getRealScissor()
-	return _scvX * _scSX + _scX, _scvY * _scSY + _scY, _scvW * _scSX, _scvH * _scSY
-end
-
-local function setScissor(x, y, w, h)
-	_scvX, _scvY, _scvW, _scvH = x, y, w, h
-	if not x then return _ogSetScissor() end
-	_ogSetScissor(getRealScissor())
-end
-
-local function intersectScissor(x, y, w, h)
-	if not _scvX then
-		_scvX, _scvY, _scvW, _scvH = x, y, w, h
-		return _ogSetScissor(getRealScissor())
-	end
-	_scvX, _scvY = math.max(_scvX, x), math.max(_scvY, y)
-	_scvW, _scvH = math.max(math.min(_scvX + _scvW, x + w) - _scvX, 0), math.max(math.min(_scvY + _scvH, y + h) - _scvY, 0)
-	_ogSetScissor(getRealScissor())
-end
-
--- need a rework
-local _scissors, _scissorn = {}, 0
-function game.__pushBoundScissor(w, h, sx, sy)
-	local idx = _scissorn * 6; _scissorn = _scissorn + 1
-	_scissors[idx + 6], _scissors[idx + 5] = _scH, _scW
-	_scissors[idx + 4], _scissors[idx + 3] = _scSY, _scSX
-	_scissors[idx + 2], _scissors[idx + 1] = _scY, _scX
-	_scSX, _scSY = math.abs(_scSX * sx), math.abs(_scSY * sy)
-	_scX, _scW = (_scW - _scSX * math.abs(w)) / 2, math.abs(w)
-	_scY, _scH = (_scH - _scSY * math.abs(h)) / 2, math.abs(h)
-end
-
-function game.__literalBoundScissor(w, h, sx, sy)
-	local idx = _scissorn * 6; _scissorn = _scissorn + 1
-	_scissors[idx + 6], _scissors[idx + 5] = _scH, _scW
-	_scissors[idx + 4], _scissors[idx + 3] = _scSY, _scSX
-	_scissors[idx + 2], _scissors[idx + 1] = _scY, _scX
-	_scSX, _scSY = math.abs(sx), math.abs(sy)
-	_scX, _scW = 0, math.abs(w)
-	_scY, _scH = 0, math.abs(h)
-end
-
-function game.__popBoundScissor()
-	_scissorn = _scissorn - 1; local idx = _scissorn * 4
-	_scX, _scY = _scissors[idx + 1], _scissors[idx + 2]
-	_scSX, _scSY = _scissors[idx + 3], _scissors[idx + 4]
-	_scW, _scH = _scissors[idx + 5], _scissors[idx + 6]
-end
+game.preRenders = {}
 
 function game.draw()
-	local grap, w, h = love.graphics, game.width, game.height
-	Gamestate.draw()
+	local grap = love.graphics
+	local w, h, ww, wh = game.width, game.height, grap.getDimensions()
+	local scale = math.min(ww / w, wh / h)
+	local tx, ty = math.floor((ww - w * scale) / 2), math.floor((wh - h * scale) / 2)
+	game.renderScale = scale
+	game.renderOffset:set(tx, ty)
 
-	local winW, winH = grap.getDimensions()
-	local scale, xc, yc, wc, hc = math.min(winW / w, winH / h), grap.getScissor()
-
-	_scW, _scH, _scSX, _scSY = winW, winH, scale, scale
-	_scX, _scY = math.floor((winW - _scSX * w) / 2), math.floor((winH - _scSY * h) / 2)
-	_scvX, _scvY, _scvW, _scvH = nil, nil, nil, nil
-
-	_ogIntersectScissor, grap.intersectScissor = grap.intersectScissor, intersectScissor
-	_ogGetScissor, grap.getScissor = grap.getScissor, getScissor
-	_ogSetScissor, grap.setScissor = grap.setScissor, setScissor
-
+	game.state.draw()
 	grap.push("all")
-	grap.translate(_scX, _scY)
-	grap.scale(scale)
+		grap.translate(tx, ty)
+		grap.scale(scale)
+		grap.intersectScissor(tx, ty, math.ceil(w * scale), math.ceil(h * scale))
 
-	for _, o in ipairs(game.bound.members) do
-		if o.__render and (not o._canDraw or o:_canDraw()) then
-			o:__render(game)
+		for _, o in ipairs(game.bound.members) do
+			if o.__render and (not o.canDraw or o:canDraw()) then
+				o:__render(game)
+			end
 		end
-	end
-
+		grap.setScissor()
 	grap.pop()
 
-	_ogSetScissor(xc, yc, wc, hc)
-	grap.getScissor, grap.setScissor = _ogGetScissor, _ogSetScissor
-	grap.intersectScissor = _ogIntersectScissor
-
-	for _, o in ipairs(game.members) do
-		if o.__render and (not o._canDraw or o:_canDraw()) then
-			o:__render(game)
+	grap.push("all")
+		for _, o in ipairs(game.members) do
+			if o.__render and (not o.canDraw or o:canDraw()) then
+				o:__render(game)
+			end
 		end
-	end
+	grap.pop()
 end

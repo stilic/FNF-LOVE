@@ -58,6 +58,7 @@ function postCreate()
 		stage:insert(stage:indexOf(dad), Trail(dad, 4, 24, 0.3, 0.069))
 	end
 
+
 	dad:dance()
 	dad:finish()
 	cameraMovement(getCameraPosition(camTarget))

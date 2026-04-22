@@ -26,12 +26,12 @@ function Mods.reload()
 		end
 	end
 
-	if game.save.data.currentMod then
-		if table.find(Mods.all, game.save.data.currentMod) then
-			Mods.currentMod = game.save.data.currentMod
+	if ClientPrefs.save.data.currentMod then
+		if table.find(Mods.all, ClientPrefs.save.data.currentMod) then
+			Mods.currentMod = ClientPrefs.save.data.currentMod
 		else
 			Mods.currentMod = nil
-			game.save.data.currentMod = Mods.currentMod
+			ClientPrefs.save.data.currentMod = Mods.currentMod
 		end
 	end
 end

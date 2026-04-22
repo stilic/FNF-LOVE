@@ -87,6 +87,7 @@ local data = {
 		local value = not ClientPrefs.data.vsync
 		ClientPrefs.data.vsync = value
 		love.vsync = value
+		love.window.setVSync(love.vsync and 1 or 0)
 	end},
 	{"STATS"},
 	{"showFps", "Show FPS", "boolean", function()
@@ -110,11 +111,6 @@ local data = {
 		game.statsCounter.showDraws = value
 	end},
 	{"TOASTS"},
-	{"showToastPrints", "Show prints", "boolean", function()
-		local value = not ClientPrefs.data.showToastPrints
-		ClientPrefs.data.showToastPrints = value
-		Toast.showPrints = value
-	end},
 	{"showToastErrors", "Show errors", "boolean", function()
 		local value = not ClientPrefs.data.showToastErrors
 		ClientPrefs.data.showToastErrors = value

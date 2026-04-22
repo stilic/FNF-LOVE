@@ -1,7 +1,33 @@
 local util = {}
 
-function util.coolLerp(x, y, i, delta)
+util.math = {}
+util.device = {}
+
+function util.math.coolLerp(x, y, i, delta)
 	return math.lerp(y, x, math.exp(-(delta or game.dt) * i))
+end
+
+local time, clock, ms = "%d:%02d", "%d:%02d:%02d", "%.3f"
+function util.math.formatTime(seconds, includeMS)
+	local minutes = seconds / 60
+	local str = minutes < 60 and time:format(minutes, seconds % 60) or
+		clock:format(minutes / 60, minutes % 60, seconds % 60)
+	if not includeMS then return str end
+	return str .. ms:format(seconds - math.floor(seconds)):sub(2)
+end
+
+function util.math.formatNumber(number)
+	if number < 1000 and number > -1000 then return tostring(number) end
+	local _, _, minus, int, frac = tostring(number):find('([-]?)(%d+)([.]?%d*)')
+	return minus .. int:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "") .. frac
+end
+
+util.coolLerp = util.math.coolLerp
+util.formatTime = util.math.formatTime
+util.formatNumber = util.math.formatNumber
+
+function util.device.wakelock(state)
+	love.window.setDisplaySleepEnabled(not state)
 end
 
 function util.newGradient(dir, ...)
@@ -10,7 +36,7 @@ function util.newGradient(dir, ...)
 
 	for i = 0, colorSize do
 		local idx, color, x = i * 2 + 1, select(i + 1, ...), i / colorSize
-		local r, g, b, a = unpack(color)
+		local r, g, b, a = color[1], color[2], color[3], color[4]
 		a = a or 1
 
 		meshData[idx] = {x, x, x, x, r, g, b, a}
@@ -22,21 +48,6 @@ function util.newGradient(dir, ...)
 	end
 
 	return love.graphics.newMesh(meshData, "strip", "static")
-end
-
-local time, clock, ms = "%d:%02d", "%d:%02d:%02d", "%.3f"
-function util.formatTime(seconds, includeMS)
-	local minutes = seconds / 60
-	local str = minutes < 60 and time:format(minutes, seconds % 60) or
-		clock:format(minutes / 60, minutes % 60, seconds % 60)
-	if not includeMS then return str end
-	return str .. ms:format(seconds - math.floor(seconds)):sub(2)
-end
-
-function util.formatNumber(number)
-	if number < 1000 and number > -1000 then return tostring(number) end
-	local _, _, minus, int, frac = tostring(number):find('([-]?)(%d+)([.]?%d*)')
-	return minus .. int:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "") .. frac
 end
 
 function util.playMenuMusic(fade)

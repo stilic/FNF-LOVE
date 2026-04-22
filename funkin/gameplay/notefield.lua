@@ -7,9 +7,9 @@ function Notefield:new(x, y, keys, skin, character, vocals, speed)
 
 	Notefield.super.new(self, x, y)
 
-	self.__offsetX = 0
-	self.noteWidth = 160 * 0.7
-	self.height = 514
+ 	self.__offsetX = 0
+ 	self.noteWidth = 160 * 0.7
+	self.height = game.height - 206
 	self.keys = keys
 	self.skin = skin.data
 
@@ -33,11 +33,16 @@ function Notefield:new(x, y, keys, skin, character, vocals, speed)
 
 	self.chartNotes = {}
 	self.activeNotes = {}
+	self.notePool = {}
 	self.chartIndex = 1
-	self.spawnBuffer = 2.0
+	self.spawnBuffer = 1
 	self.lastSpawnTime = -math.huge
 
+	self._hitNotes = {}
+
 	self.noNoteRender = false
+
+	self.state = game.getState()
 
 	self.__topSprites = Group()
 	for i = 1, keys do self:makeLane(i) end
@@ -63,7 +68,7 @@ function Notefield:hideNotes(bool)
 end
 
 function Notefield:setWidth(width, nwidth)
-	nwidth = nwidth or (160 * 0.7)
+	nwidth = nwidth or 160 * 0.7
 	width = width or nwidth * self.keys
 	self.width = width
 
@@ -97,17 +102,12 @@ function Notefield:makeLane(direction, y)
 	return lane
 end
 
-function Notefield:makeNotesFromChart(notes)
-	self.chartNotes = notes
-	self.chartIndex = 1
-	table.sort(self.chartNotes, function(a, b) return a.t < b.t end)
+function Notefield:setNoteBuffer(buffer)
+	self.chartNotes = buffer
+	self.chartIndex = 0
 
+	self.lastProcessedTime = -math.huge
 	for _, note in ipairs(self.activeNotes) do
-		if note.group then
-			local lane = note.group
-			table.delete(lane.renderedNotes, note)
-			lane.renderedNotesI[note] = nil
-		end
 		note:destroy()
 	end
 	self.activeNotes = {}
@@ -119,34 +119,35 @@ function Notefield:makeNotesFromChart(notes)
 end
 
 function Notefield:getNotes(time, direction, sustainLoop)
+	table.clear(self._hitNotes)
 	local notes = self.activeNotes
-	if #notes == 0 then return {} end
+	if #notes == 0 then return self._hitNotes end
 
-	local safeZoneOffset, hitNotes, i, started, hasSustain,
-	forceHit, noteTime, hitTime, prev, prevIdx = Note.safeZoneOffset, {}, 1
-	for _, note in ipairs(notes) do
-		noteTime = note.time
-		if not note.tooLate
-			and not note.ignoreNote
-			and (direction == nil or note.direction == direction)
-			and (note.lastPress
-				or (noteTime > time - safeZoneOffset * note.lateHitMult
-					and noteTime < time + safeZoneOffset * note.earlyHitMult)) then
-			forceHit = sustainLoop and not note.wasGoodSustainHit and note.sustain
-			if forceHit then hasSustain = true end
-			if forceHit or not note.wasGoodHit then
-				prevIdx = i - 1
-				prev = hitNotes[prevIdx]
-				if prev and noteTime - prev.time <= 0.001 and note.sustainTime > prev.sustainTime then
-					hitNotes[i] = prev
-					hitNotes[prevIdx] = note
-				else
-					hitNotes[i] = note
+	local safeZoneOffset = Note.safeZoneOffset
+	local hitNotes, i, hasSustain = self._hitNotes, 1
+
+	for idx = 1, #notes do
+		local note = notes[idx]
+		local noteTime = note.time
+		local earlyWindow = time + safeZoneOffset * (note.earlyHitMult or 1)
+		local lateWindow = time - safeZoneOffset * (note.lateHitMult or 1)
+		if noteTime > earlyWindow and not note.lastPress then break end
+
+		if not note.tooLate and not note.ignoreNote and (direction == nil or note.direction == direction) then
+			if note.lastPress or (noteTime > lateWindow and noteTime < earlyWindow) then
+				local forceHit = sustainLoop and not note.wasGoodSustainHit and note.sustain
+				if forceHit then hasSustain = true end
+				if not note.wasGoodHit or forceHit then
+					local prevIdx = i - 1
+					local prev = hitNotes[prevIdx]
+					if prev and noteTime - prev.time <= 0.001 and note.sustainTime > prev.sustainTime then
+						hitNotes[i] = prev
+						hitNotes[prevIdx] = note
+					else
+						hitNotes[i] = note
+					end
+					i = i + 1
 				end
-				i = i + 1
-				started = true
-			elseif started then
-				break
 			end
 		end
 	end
@@ -161,7 +162,13 @@ function Notefield:addNote(note)
 end
 
 function Notefield:makeNote(time, column, sustain, type, skin)
-	local note = Note(time, column, sustain, type, skin or self.skin)
+	local note
+	if #self.notePool > 0 then
+		note = table.remove(self.notePool)
+		note:reset(time, column, sustain, type, skin or self.skin)
+	else
+		note = Note(time, column, sustain, type, skin or self.skin)
+	end
 	note.parent = self
 	table.insert(self.activeNotes, note)
 	return note
@@ -182,7 +189,9 @@ function Notefield:removeNoteFromIndex(idx)
 		table.delete(lane.renderedNotes, note)
 	end
 
-	return table.remove(self.activeNotes, idx)
+	table.remove(self.activeNotes, idx)
+	table.insert(self.notePool, note)
+	return note
 end
 
 function Notefield:removeNote(note)
@@ -236,7 +245,7 @@ function Notefield:fadeInReceptors(tween)
 		receptor.y = receptor.y - 10
 		receptor.alpha = 0
 
-		local func = function(...) return tween and tween:tween(...) or Tween.tween(...) end
+ 		local func = function(...) return tween and tween:tween(...) or Tween.tween(...) end
 		func(receptor, {y = receptor.y + 10, alpha = 1}, 1, {
 			ease = "circOut",
 			startDelay = 0.16 + (0.2 * i)
@@ -248,21 +257,29 @@ function Notefield:update(dt)
 	Notefield.super.update(self, dt)
 
 	local maxSpeed = self.speed
-	for _, lane in ipairs(self.lanes) do
-		maxSpeed = math.max(maxSpeed, self.speed * lane.speed)
+	self.spawnBuffer = 0
+	local buffer = self.chartNotes
+	local spawnTime = (self.time - self.offsetTime) * 1000
+
+	if not self.noNoteRender then
+		for _, lane in ipairs(self.lanes) do
+			maxSpeed = math.max(maxSpeed, self.speed * (lane.speed or 1))
+		end
+
+		local visualConstant = 0.45
+		local spawnDistance = self.drawSize / 2
+		self.spawnBuffer = (spawnDistance / (maxSpeed * 1000 * visualConstant)) + 0.05
+		spawnTime = ((self.time - self.offsetTime) * 1000) + (self.spawnBuffer * 1000)
+		self.lastSpawnTime = spawnTime
 	end
-	self.spawnBuffer = math.max(2.0, 1.0 + maxSpeed * 0.5)
-
-	if #self.chartNotes == 0 then return end
-
-	local currentTime = (self.time - self.offsetTime) * 1000
-	local spawnTime = currentTime + self.spawnBuffer * 1000
-
-	if spawnTime - self.lastSpawnTime < 100 then return end
 	self.lastSpawnTime = spawnTime
 
-	while self.chartIndex <= #self.chartNotes do
-		local chartNote = self.chartNotes[self.chartIndex]
+	local data = buffer.data
+	local kinds = buffer.kindList
+
+	while self.chartIndex < buffer.count do
+		local chartNote = data[self.chartIndex]
+
 		if chartNote.t > spawnTime then break end
 
 		local sustainTime = chartNote.l or 0
@@ -270,16 +287,37 @@ function Notefield:update(dt)
 			sustainTime = math.max(sustainTime / 1000, 0.125)
 		end
 
-		local note = Note(chartNote.t / 1000, chartNote.d % 4, sustainTime, chartNote.k, self.skin)
+		local note = self:makeNote(chartNote.t / 1000, chartNote.d % 4, sustainTime, kinds[chartNote.k], self.skin)
 		note.parent = self
-		note.gf = chartNote.gf
 
-		table.insert(self.activeNotes, note)
+		if chartNote.gf and game.getState().gf then
+			note.character = game.getState().gf
+		end
+
 		self.chartIndex = self.chartIndex + 1
+
+		if self.state.scripts then
+			self.state.scripts:call("noteSpawn", note)
+		end
+
+		if #self.activeNotes > 1 then
+			table.sort(self.activeNotes, function(a, b) return a.time < b.time end)
+		end
 	end
 
-	if #self.activeNotes > 1 then
-		table.sort(self.activeNotes, function(a, b) return a.time < b.time end)
+	local time = self.time - self.offsetTime
+	local offscreenLimit = -self.drawSize / 2
+	local i = 1
+	while i <= #self.activeNotes do
+		local note = self.activeNotes[i]
+		local laneSpeed = self.lanes[note.direction + 1] and self.lanes[note.direction + 1].speed or 1
+		local noteY = Note.toPos(note.time + note.sustainTime - time, self.speed * laneSpeed)
+
+		if noteY < offscreenLimit then
+			self:removeNoteFromIndex(i)
+		else
+			i = i + 1
+		end
 	end
 
 	for _, lane in ipairs(self.lanes) do
@@ -325,6 +363,11 @@ function Notefield:destroy()
 			l:destroy(); if l.receptor then l.receptor:destroy() end
 			l.renderedNotes, l.renderedNotesI, l.currentNoteI, l.receptor = nil
 		end
+	end
+
+	if self.notePool then
+		for _, n in ipairs(self.notePool) do n:destroy() end
+		self.notePool = nil
 	end
 
 	self.chartNotes = nil

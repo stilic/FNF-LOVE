@@ -1,68 +1,80 @@
 local vslice = {name = "V-Slice"}
+local NoteBuffer = require "funkin.backend.notebuffer"
 
-local stage
-local switchStage = {
-	["mainStage"] = function() stage = "stage" end,
-	["spookyMansion"] = function() stage = "spooky" end,
-	["phillyTrain"] = function() stage = "philly" end,
-	["limoRide"] = function() stage = "limo" end,
-	["mallXmas"] = function() stage = "mall" end,
-	["mallEvil"] = function() stage = "mall-evil" end,
-	["schoolEvil"] = function() stage = "school-evil" end,
-	["tankmanBattlefield"] = function() stage = "tank" end
+local STAGE_MAP = {
+	["mainStage"]          = "stage",
+	["spookyMansion"]      = "spooky",
+	["phillyTrain"]        = "philly",
+	["limoRide"]           = "limo",
+	["mallXmas"]           = "mall",
+	["mallEvil"]           = "mall-evil",
+	["schoolEvil"]         = "school-evil",
+	["tankmanBattlefield"] = "tank",
+	["phillyStreets"]      = "streets",
 }
 
-local function updateFromMeta(data, meta)
-	if not meta then return end
+for k, v in pairs(STAGE_MAP) do STAGE_MAP[k .. "Erect"] = v .. "-erect" end
 
-	assert(meta.playData ~= nil, "Not a valid V-Slice metadata")
-	local info = meta.playData
+local NOTE_STYLE_MAP = {
+	["funkin"] = "default",
+	["pixel"]  = "default-pixel",
+}
 
-	-- Parser.pset(data, "song", meta.songName or meta.song)
+local KIND_MAP = {
+	["mom"] = "alt",
+}
 
-	stage = nil
-	switch(info.stage, switchStage)
-	Parser.pset(data, "stage", stage or info.stage)
-
-	local notestyle = info.noteStyle == "funkin" and
-		"default" or info.noteStyle == "pixel" and "default-pixel"
-		or info.noteStyle
-	Parser.pset(data, "skin", notestyle)
-	Parser.pset(data, "difficulties", info.difficulties)
-	Parser.pset(data, "timeChanges", meta.timeChanges)
-
-	info = info.characters
-	Parser.pset(data, "player1", info.player)
-	Parser.pset(data, "player2", info.opponent)
-	Parser.pset(data, "gfVersion", info.girlfriend)
+local function readMeta(song)
+	local info  = song.meta
+	local chars = info.characters
+	return {
+		stage       = STAGE_MAP[info.stage] or info.stage,
+		skin        = NOTE_STYLE_MAP[info.noteStyle] or info.noteStyle,
+		timeChanges = info.timeChanges,
+		player1     = chars.player,
+		player2     = chars.opponent,
+		gfVersion   = chars.girlfriend,
+	}
 end
 
 local function processNotes(notes)
-	local dad, bf, isPlayer = {}, {}
+	local enemy  = NoteBuffer()
+	local player = NoteBuffer()
+
 	for _, n in ipairs(notes) do
-		isPlayer = not (tonumber(n.d or 0) > 3)
-		n.d = tonumber(n.d or 0) % 4
-		n.k = n.k == "mom" and "alt" or n.k
-		table.insert(isPlayer and bf or dad, n)
+		local col      = tonumber(n.d) or 0
+		local isPlayer = col <= 3
+		local kind     = KIND_MAP[n.k] or n.k
+		local buf      = isPlayer and player or enemy
+
+		buf:push(n.t, col % 4, n.l, kind, n.gf)
 	end
 
-	return {enemy = dad, player = bf}
+	enemy:shrink()
+	player:shrink()
+	return { enemy = enemy, player = player }
 end
 
-function vslice.parse(data, events, meta, diff)
-	local scrollspeed, notes, events = data.scrollSpeed, data.notes, data.events
-	for k, _ in pairs(data) do data[k] = nil end
-	updateFromMeta(data, meta)
+function vslice.parse(song, data, rawEvents, diff)
+	local chart = Song.newChart()
 
-	if scrollspeed and diff then
-		data.speed = scrollspeed[diff:lower()] or scrollspeed.default or 1
+	local meta      = readMeta(song)
+	chart.stage     = meta.stage
+	chart.skin      = meta.skin
+	chart.player1   = meta.player1
+	chart.player2   = meta.player2
+	chart.gfVersion = meta.gfVersion
+	chart.timeChanges = meta.timeChanges
+
+	if data.scrollSpeed and diff then
+		chart.speed = data.scrollSpeed[diff:lower()] or data.scrollSpeed.default or 1
 	end
 
-	local diffnotes = notes and notes[diff:lower()] or nil
-	data.notes = diffnotes and processNotes(diffnotes) or {enemy = {}, player = {}}
-	data.events = events or {}
+	local diffNotes = data.notes and data.notes[diff:lower()]
+	chart.notes  = diffNotes and processNotes(diffNotes) or { enemy = {}, player = {} }
+	chart.events = data.events or rawEvents or {}
 
-	return data
+	return chart
 end
 
 return vslice

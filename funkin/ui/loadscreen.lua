@@ -3,7 +3,7 @@ local LoadScreen = SpriteGroup:extend("LoadScreen")
 function LoadScreen:new(nextState)
 	LoadScreen.super.new(self)
 
-	local px, py = game.width * 0.92, game.height * 0.88
+	local px, py = game.width - 80, game.height - 80
 	self.icon = Sprite(0, 0, paths.getImage("menus/loadicon"))
 	self.icon:setGraphicSize(self.icon.width * 0.65)
 	self.icon:updateHitbox()
@@ -39,7 +39,7 @@ function LoadScreen:update(dt)
 	self.percent:center(self.icon)
 
 	local amount = math.sin(self.time * 2)
-	local min = 0.009
+	local min = 0.01
 	local scale = min + (1 - min) * math.abs(amount)
 	self.icon.scale.x = scale * (amount >= 0 and 1 or -1) * 0.65
 

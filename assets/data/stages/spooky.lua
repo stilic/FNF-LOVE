@@ -1,5 +1,3 @@
-local base, back, window, reflect
-
 local function modify(obj, c, s, b)
 	obj.shaderObj.isGraphic = obj:is(Graphic)
 	obj.shaderObj.modifier = {c, s, b}
@@ -13,11 +11,11 @@ local function lightingAnimation()
 
 		reflect.alpha = 1
 		local color = Color.BLACK
-		state.boyfriend.color, state.dad.color, state.gf.color =
+		boyfriend.color, dad.color, gf.color =
 			color, color, color
 	end
 
-	Timer(state.timer):start(1 / 12, function()
+	Timer(timer):start(1 / 12, function()
 		local eh = {c = 3, s = 2, b = 0.9}
 		local eh2 = {b = 10}
 
@@ -28,7 +26,7 @@ local function lightingAnimation()
 
 			reflect.alpha = 0
 			local color = Color.WHITE
-			state.boyfriend.color, state.dad.color, state.gf.color =
+			boyfriend.color, dad.color, gf.color =
 				color, color, color
 		else
 			-- lower the intensity for next animation
@@ -36,9 +34,9 @@ local function lightingAnimation()
 			eh.c, eh.s = 1.5, 1
 		end
 
-		Timer(state.timer):start(1 / 24, function()
+		Timer(timer):start(1 / 24, function()
 			game.camera:shake(0.001, 1.4)
-			state.camHUD:shake(0.001, 1.4)
+			camHUD:shake(0.001, 1.4)
 
 			util.playSfx(paths.getSound('gameplay/thunder_' ..
 				love.math.random(1, 2)))
@@ -46,25 +44,27 @@ local function lightingAnimation()
 			reflect.alpha = 0.5
 
 			local ease = {ease = Ease.cubeOut}
-			state.tween:tween(eh, {c = 1, s = 1, b = 1}, 1, ease)
-			state.tween:tween(eh2, {b = 1}, 1, ease)
+			tween:tween(eh, {c = 1, s = 1, b = 1}, 1, ease)
+			tween:tween(eh2, {b = 1}, 1, ease)
 
-			state.tween:tween(reflect, {alpha = 0.6}, 0.7, ease)
+			tween:tween(reflect, {alpha = 0.6}, 0.7, ease)
 
 			local tmp = {a = 0} -- whoops
-			state.tween:tween(tmp, {a = 0}, 1.5, {onUpdate = function(this)
+			tween:tween(tmp, {a = 0}, 4, {onUpdate = function(this)
 				modify(base, eh.c, eh.s, eh.b)
 				modify(back, eh.c, eh.s, eh.b)
 				modify(window, 1, 1, eh2.b)
-			end})
+			end,
+				ease = Ease.quintOut
+			})
 
-			if state.boyfriend then
-				state.boyfriend:playAnim('scared', true)
-				state.boyfriend.lastHit = PlayState.conductor.time + 300
+			if boyfriend then
+				boyfriend:playAnim('scared', true)
+				boyfriend.lastHit = PlayState.conductor.time + 300
 			end
-			if state.gf then
-				state.gf:playAnim('scared', true)
-				state.gf.lastHit = PlayState.conductor.time + 300
+			if gf then
+				gf:playAnim('scared', true)
+				gf.lastHit = PlayState.conductor.time + 300
 			end
 		end)
 	end)
@@ -72,46 +72,30 @@ end
 
 function preload()
 	return {
-	    {"image", SCRIPT_PATH .. "window"},
-	    {"image", SCRIPT_PATH .. "bg_shadows"},
-	    {"image", SCRIPT_PATH .. "windowReflect"},
+		{"image", SCRIPT_PATH .. "window"},
+		{"image", SCRIPT_PATH .. "bg_shadows"},
+		{"image", SCRIPT_PATH .. "windowReflect"},
 	}
 end
 
-function create()
-	self.dadCam.y = 34
-
-	base = Graphic(-350, -260, 2000, 2000, Color.fromString("#32325A"))
-	base:setScrollFactor()
+function postCreate()
 	base.shaderObj = Shader("csb")
 	base.shader = base.shaderObj:get()
-	self:add(base)
-
-	window = Sprite(243, 68, paths.getImage(SCRIPT_PATH .. "window"))
 	window.shaderObj = Shader("csb")
 	window.shader = window.shaderObj:get()
-	self:add(window)
-
-	local windowBlend = Sprite(243, 68, paths.getImage(SCRIPT_PATH .. "window"))
 	windowBlend.blend = "add"
 	windowBlend.alpha = 0.22
-	self:add(windowBlend)
-
-	back = Sprite(-200, -100, paths.getImage(SCRIPT_PATH .. "bg_shadows"))
 	back.shaderObj = Shader("csb")
 	back.shader = back.shaderObj:get()
-	self:add(back)
-
-	reflect = Sprite(262, 609, paths.getImage(SCRIPT_PATH .. "windowReflect"))
 	reflect.alpha = 0.5
 	reflect.blend = "add"
 	reflect.shader = window.shader
-	self:add(reflect)
 
 	modify(base, 1, 1, 1)
 	modify(back, 1, 1, 1)
 	modify(window, 1, 1, 1)
 end
+
 
 local lightningStrikeBeat = 0
 local lightningOffset = love.math.random(8, 24)

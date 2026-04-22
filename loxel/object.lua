@@ -6,6 +6,16 @@ Object.defaultAntialiasing = false
 
 local floor, min, max = math.floor, math.min, math.max
 
+local ffi = require("ffi")
+local C = ffi.C
+ffi.cdef[[
+	typedef struct {
+		float x, y, rad, sx, sy, ox, oy, kx, ky;
+		float minX, minY, maxX, maxY;
+		float m11, m12, m21, m22, dx, dy; //  matrix compons
+	} TransformData;
+]]
+
 function Object:setupDrawLogic(camera, initDraw)
 	if initDraw == nil then initDraw = true end
 	local x, y, rad, sx, sy, ox, oy = self.x, self.y, math.rad(self.angle),
@@ -25,14 +35,21 @@ function Object:setupDrawLogic(camera, initDraw)
 	end
 	if initDraw then
 		love.graphics.setShader(self.shader)
-		love.graphics.setBlendMode(self.blend, self.blendMethod)
+		if self.blend == "multiply" then
+			-- rgb op, alpha op, srcfacRGB, srcfacA, dtsfacRGB, dstFactorA
+			love.graphics.setBlendState("add", "add", "dstcolor", "one", "oneminussrcalpha", "oneminussrcalpha")
+		else
+			love.graphics.setBlendMode(self.blend, self.blendMethod)
+		end
 		love.graphics.setColor(self:getDrawColor())
 	end
 
 	if Object.showBoundary then
-		local x1, y1, w1, h1 = self:getWorldBounds()
+		local d = self:getWorldBounds()
+		local x1, y1, w1, h1 = d.minX, d.minY, d.maxX - d.minX, d.maxY - d.minY
 		love.graphics.push("all")
 		love.graphics.scale(1, 1)
+		love.graphics.setColor(1, 1, 1, 1)
 		love.graphics.rectangle("line", x1 - (camera.scroll.x * self.scrollFactor.x),
 			y1 - (camera.scroll.y * self.scrollFactor.y), math.abs(w1), math.abs(h1))
 		love.graphics.pop()
@@ -69,7 +86,8 @@ function Object:new(x, y)
 	self.velocity = Point()
 	self.acceleration = Point()
 
-	self._transform = love.math.newTransform() -- internal, never use
+	-- self._transform = love.math.newTransform()
+	self._data = ffi.new("TransformData") -- internal, never use
 end
 
 function Object:destroy()
@@ -83,7 +101,7 @@ function Object:destroy()
 	self.acceleration:zero()
 
 	self.shader = nil
-	self._transform = nil
+	self._data = nil
 	Object.super.destroy(self)
 end
 
@@ -134,7 +152,6 @@ end
 function Object:centerOffsets(__width, __height)
 	self.offset.x = (__width or self.width) / 2
 	self.offset.y = (__height or self.height) / 2
-	if self._boundsCache then self._boundsCache.dirty = true end
 end
 
 function Object:fixOffsets(__width, __height)
@@ -158,69 +175,73 @@ function Object:update(dt)
 end
 
 local abs, rad, sin, cos = math.abs, math.rad, math.fastsin, math.fastcos
-local function checkCamera(camera, ox, oy, ow, oh, sfx, sfy)
-	local x = ox - camera.scroll.x * sfx
-	local y = oy - camera.scroll.y * sfy
-	local cx, cy, cw, ch, csx, csy, cox, coy = camera:_getCameraBoundary()
-
-	local hw1, hw2, hh1, hh2 = ow / 2, cw / 2, oh / 2, ch / 2
-	local rad2 = rad(camera.angle or 0)
-	local sin2, cos2 = abs(sin(rad2)), abs(cos(rad2))
-
-	return abs(cx + hw2 - x - hw1) - hw1 - hw2 * cos2 * csx - hh2 * sin2 * csy < 0 and
-		abs(cy + hh2 - y - hh1) - hh1 - hh2 * cos2 * csy - hw2 * sin2 * csx < 0
-end
 
 function Object:isOnScreen(cameras, x, y, w, h, sfx, sfy)
 	local ox, oy, ow, oh
 	if x then
 		ox, oy, ow, oh = x, y, w, h
 	else
-		ox, oy, ow, oh = self:getWorldBounds()
+		local d = self:getWorldBounds()
+		ox, oy, ow, oh = d.minX, d.minY, d.maxX - d.minX, d.maxY - d.minY
 	end
 
 	if sfx == nil then sfx = self.scrollFactor and self.scrollFactor.x or 1 end
 	if sfy == nil then sfy = self.scrollFactor and self.scrollFactor.y or 1 end
 
-	if cameras.x then return checkCamera(cameras, ox, oy, ow, oh, sfx, sfy) end
+	if cameras.x then return cameras:_check(ox, oy, ow, oh, sfx, sfy) end
 	for _, camera in pairs(cameras) do
-		if checkCamera(camera, ox, oy, ow, oh, sfx, sfy) then return true end
+		if camera:_check(ox, oy, ow, oh, sfx, sfy) then return true end
 	end
 	return false
 end
 
-function Object:_canDraw()
+function Object:canDraw()
 	return self.alpha > 0 and (self.scale.x * self.zoom.x ~= 0 or
-		self.scale.y * self.zoom.y ~= 0) and Object.super._canDraw(self)
+		self.scale.y * self.zoom.y ~= 0) and Object.super.canDraw(self)
 end
 
 function Object:getBoundaryTransform()
-	self._transform:reset()
+	local d = self._data
 	local x, y = self.x, self.y
 	local ox, oy, offx, offy = self.origin.x, self.origin.y, self.offset.x, self.offset.y
-	local ang, sx, sy = math.rad(self.angle), self.scale.x * self.zoom.x, self.scale.y * self.zoom.y
+	local ang = math.rad(self.angle)
+	local sx, sy = self.scale.x * self.zoom.x, self.scale.y * self.zoom.y
 	local kx, ky = self.skew.x, self.skew.y
-	if self.flipX then sx = -sx end; if self.flipY then sy = -sy end
+
+	if self.flipX then sx = -sx end
+	if self.flipY then sy = -sy end
 
 	if self.animation and self.animation.curAnim then
 		local ax, ay = self.animation.curAnim:rotateOffset(self.angle, sx, sy)
 		x, y = x - ax, y - ay
 	end
-	local dx, dy = x + ox - offx, y + oy - offy
 
+	local dx, dy = x + ox - offx, y + oy - offy
 	local frame = self.animation and self.animation:getCurrentFrame()
 	local dox, doy = ox, oy
+
 	if frame and type(frame) == "table" then
 		local fox, foy = frame.offset and frame.offset.x or 0, frame.offset and frame.offset.y or 0
 		if frame.rotated then
 			ang, sx, sy, kx, ky = ang - math.pi / 2, sy, sx, ky, kx
-			dox, doy = select(3, frame.quad:getViewport()) - (oy + foy), ox + fox
+			local _, _, qw, qh = frame.quad:getViewport()
+			dox, doy = qw - (oy + foy), ox + fox
 		else
 			dox, doy = ox + fox, oy + foy
 		end
 	end
-	self._transform:translate(dx, dy):rotate(ang):scale(sx, sy):shear(kx, ky):translate(-dox, -doy)
-	return self._transform
+
+	local s, c = math.fastsin(ang), math.fastcos(ang)
+
+	d.m11 = c * sx - ky * s * sy
+	d.m12 = s * sx + ky * c * sy
+	d.m21 = kx * c * sx - s * sy
+	d.m22 = kx * s * sx + c * sy
+
+	d.dx = dx - (dox * d.m11 + doy * d.m21)
+	d.dy = dy - (dox * d.m12 + doy * d.m22)
+
+	return d
 end
 
 function Object:getLocalBounds()
@@ -245,13 +266,26 @@ function Object:getLocalBounds()
 end
 
 function Object:getWorldBounds()
-	local t, lx, ly, lw, lh = self:getBoundaryTransform(), self:getLocalBounds()
-	local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
-	for i = 0, 3 do
-		local x, y = t:transformPoint(lx + (i % 2) * lw, ly + floor(i / 2) * lh)
-		minX, maxX, minY, maxY = min(minX, x), max(maxX, x), min(minY, y), max(maxY, y)
-	end
-	return minX, minY, maxX - minX, maxY - minY
+	self:getBoundaryTransform()
+	local d = self._data
+	local lx, ly, lw, lh = self:getLocalBounds()
+	local rx, ry = lx + lw, ly + lh
+
+	local x0 = lx * d.m11 + ly * d.m21 + d.dx
+	local y0 = lx * d.m12 + ly * d.m22 + d.dy
+	local x1 = rx * d.m11 + ly * d.m21 + d.dx
+	local y1 = rx * d.m12 + ly * d.m22 + d.dy
+	local x2 = lx * d.m11 + ry * d.m21 + d.dx
+	local y2 = lx * d.m12 + ry * d.m22 + d.dy
+	local x3 = rx * d.m11 + ry * d.m21 + d.dx
+	local y3 = rx * d.m12 + ry * d.m22 + d.dy
+
+	d.minX = math.min(x0, x1, x2, x3)
+	d.minY = math.min(y0, y1, y2, y3)
+	d.maxX = math.max(x0, x1, x2, x3)
+	d.maxY = math.max(y0, y1, y2, y3)
+
+	return d
 end
 
 function Object:getMultColor(r, g, b, a)
@@ -261,12 +295,9 @@ function Object:getMultColor(r, g, b, a)
 end
 
 function Object:getDrawColor(input)
-	local r, g, b, a = 1, 1, 1, self.alpha
 	local color = input or self.color
-	if type(color) == "table" then
-		r, g, b, a = color[1], color[2], color[3], (color[4] or 1) * self.alpha
-	end
-	return r, g, b, a
+	local r, g, b, a = Color.get(color)
+	return r, g, b, a * self.alpha
 end
 
 return Object

@@ -3,124 +3,27 @@ local lightColors = {
 	{251, 166, 51}
 }
 local curLight = 1
+local Train, trainobj = require "philly.train"
 
-local trainMoving = false
-local trainFrameTiming = 0
-local trainCars = 8
-local trainFinishing = false
-local trainCooldown = 0
-
-local startedMoving = false
-
-local phillyWindow, phillyTrain, trainSound
-
-function create()
-	local bg = Sprite(-95)
-	bg:loadTexture(paths.getImage(SCRIPT_PATH .. 'sky'))
-	bg:setScrollFactor(0.1, 0.1)
-	self:add(bg)
-
-	local city = Sprite(0, 16)
-	city:loadTexture(paths.getImage(SCRIPT_PATH .. 'city'))
-	city:setScrollFactor(0.3, 0.3)
-	city:setGraphicSize(math.floor(city.width * 0.85))
-	city:updateHitbox()
-	self:add(city)
-
-	phillyWindow = Sprite(66, 127)
-	phillyWindow:loadTexture(paths.getImage(SCRIPT_PATH .. 'window'))
-	phillyWindow:setScrollFactor(0.3, 0.3)
-	phillyWindow.alpha = 0
-	phillyWindow:setGraphicSize(math.floor(phillyWindow.width * 0.85))
-	phillyWindow:updateHitbox()
-	self:add(phillyWindow)
-
-	local streetBehind = Sprite(218, 145)
-	streetBehind:loadTexture(paths.getImage(SCRIPT_PATH .. 'behindTrain'))
-	self:add(streetBehind)
-
-	phillyTrain = Sprite(2000, 360)
-	phillyTrain:loadTexture(paths.getImage(SCRIPT_PATH .. 'train'))
-	self:add(phillyTrain)
-
-	trainSound = Sound():load(paths.getSound('gameplay/train_passes'))
-	game.sound.list:add(trainSound)
-
-	local street = Sprite(27, 143)
-	street:loadTexture(paths.getImage(SCRIPT_PATH .. 'street'))
-	self:add(street)
-
-	measure()
+function postCreate()
+	trainobj = Train(train, state)
 end
 
-function update(dt)
-	phillyWindow.alpha = phillyWindow.alpha -
+function postUpdate(dt)
+	window.alpha = window.alpha -
 		(PlayState.conductor.crotchet / 1000) * dt * 1.5
-
-	if trainMoving then
-		trainFrameTiming = trainFrameTiming + dt
-
-		if trainFrameTiming >= 1 / 24 then
-			if trainSound.time >= 4.7 then
-				startedMoving = true
-				if state.gf then
-					if state.gf.anim.curAnim.name ~= "hairBlow" then
-						state.gf:playAnim('hairBlow', true, nil, true)
-					end
-				end
-				game.camera:shake(0.001, 1)
-				state.camHUD:shake(0.001, 1)
-			end
-
-			if startedMoving then
-				phillyTrain.x = phillyTrain.x - 400
-
-				if phillyTrain.x < -2000 and not trainFinishing then
-					phillyTrain.x = -1150
-					trainCars = trainCars - 1
-
-					if trainCars <= 0 then
-						trainFinishing = true
-					end
-				end
-
-				if phillyTrain.x < -4000 and trainFinishing then
-					if state.gf then
-						state.gf.danced = true -- Sets head to the correct position once the animation ends
-						state.gf:playAnim('hairFall', nil, nil, true)
-					end
-					phillyTrain.x = game.width + 200
-					trainMoving = false
-					trainCars = 8
-					trainFinishing = false
-					startedMoving = false
-				end
-			end
-
-			trainFrameTiming = 0
-		end
-	end
+	trainobj:update(dt)
 end
 
 function measure()
 	local prevCurLight = curLight
 	repeat curLight = love.math.random(1, #lightColors) until prevCurLight ~= curLight
 
-	phillyWindow.color = {
+	window.color = {
 		lightColors[curLight][1] / 255, lightColors[curLight][2] / 255,
 		lightColors[curLight][3] / 255
 	}
-	phillyWindow.alpha = 1
+	window.alpha = 1
 end
 
-function beat()
-	if not trainMoving then trainCooldown = trainCooldown + 1 end
-
-	if curBeat % 8 == 4 and love.math.randomBool(30) and not trainMoving and
-		trainCooldown > 8 then
-		trainCooldown = love.math.random(-4, 0)
-		trainMoving = true
-		trainSound:stop()
-		trainSound:play()
-	end
-end
+function postBeat(b) trainobj:beat(b) end

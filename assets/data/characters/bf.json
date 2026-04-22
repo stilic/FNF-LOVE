@@ -1,29 +1,90 @@
 {
-	"animations": [
-		["idle", "BF idle dance", [], 24, false, [-5, 0]],
-		["singLEFT", "BF NOTE LEFT0", [], 24, false, [5, -6]],
-		["singDOWN", "BF NOTE DOWN0", [], 24, false, [-20, -51]],
-		["singUP", "BF NOTE UP0", [], 24, false, [-46, 27]],
-		["singRIGHT", "BF NOTE RIGHT0", [], 24, false, [-48, -7]],
-		["singLEFTmiss", "BF NOTE LEFT MISS", [], 24, false, [7, 19]],
-		["singDOWNmiss", "BF NOTE DOWN MISS", [], 24, false, [-15, -19]],
-		["singUPmiss", "BF NOTE UP MISS", [], 24, false, [-46, 27]],
-		["singRIGHTmiss", "BF NOTE RIGHT MISS", [], 24, false, [-44, 22]],
-		["hey", "BF HEY", [], 24, false, [-3, 5]],
-		["hurt", "BF hit", [], 24, false, [14, 18]],
-		["scared", "BF idle shaking", [], 24, true, [-4, 0]],
-		["dodge", "boyfriend dodge", [], 24, false, [-10, -16]],
-		["dodge-loop", "boyfriend dodge", [3, 4, 5], 24, false, [-10, -16]],
-		["attack", "boyfriend attack", [], 24, false, [294, 267]],
-		["pre-attack", "bf pre attack", [], 24, false, [-40, -40]],
-		["cheer", "Cheer", [], 24, false, [5, 0], "characters/BFCheer"]
-	],
-	"position": [0, 350],
-	"camera_points": [0, 0],
-	"flip_x": true,
-	"icon": "bf",
-	"sprite": "characters/BOYFRIEND",
-	"antialiasing": true,
-	"sing_duration": 8,
-	"scale": 1
+  "version": "1.0.0",
+  "name": "Boyfriend",
+  "renderType": "animateatlas",
+  "assetPath": "characters/bf/bf",
+  "flipX": true,
+  "cameraOffsets": [-18, 36],
+  "death": {
+    "cameraOffsets": [-73, 42]
+  },
+  "animations": [
+    {
+      "name": "idle",
+      "prefix": "Idle"
+    },
+    {
+      "name": "singLEFT",
+      "prefix": "Left"
+    },
+    {
+      "name": "singDOWN",
+      "prefix": "Down"
+    },
+    {
+      "name": "singUP",
+      "prefix": "Up"
+    },
+    {
+      "name": "singRIGHT",
+      "prefix": "Right"
+    },
+    {
+      "name": "singLEFTmiss",
+      "prefix": "Left Miss"
+    },
+    {
+      "name": "singDOWNmiss",
+      "prefix": "Down Miss"
+    },
+    {
+      "name": "singUPmiss",
+      "prefix": "Up Miss"
+    },
+    {
+      "name": "singRIGHTmiss",
+      "prefix": "Right Miss"
+    },
+    {
+      "name": "hey",
+      "prefix": "Hey"
+    },
+    {
+      "name": "cheer",
+      "prefix": "Cheer"
+    },
+    {
+      "asset": "shared:characters/bf-death",
+      "name": "firstDeath",
+      "prefix": "Death Intro",
+      "offsets": [22, 15],
+      "atlasSettings": {
+        "uniqueInCache": true
+      }
+    },
+    {
+      "assetPath": "shared:characters/bf-death",
+      "name": "deathLoop",
+      "prefix": "Death Loop",
+      "looped": true,
+      "offsets": [22, 15]
+    },
+    {
+      "asset": "shared:characters/bf-death",
+      "name": "deathConfirm",
+      "prefix": "Death Confirm",
+      "offsets": [22, 15]
+    },
+    {
+      "assetPath": "shared:characters/bfFakeOut",
+      "name": "fakeoutDeath",
+      "prefix": "fake out death BF",
+      "animType": "symbol",
+      "offsets": [-3, -65]
+    },
+    {
+      "name": "scared",
+      "prefix": "Scared"
+    }
+  ]
 }

@@ -15,7 +15,7 @@ function event(data)
 		["player"] = function() notefields = {playerNotefield} end,
 		["opponent"] = function() notefields = {enemyNotefield} end,
 		default = function()
-			print("[SCROLLSPEED EVENT] " .. notefield .. " strumline not supported in FNF-LÖVE")
+			Logger.log("warn", notefield .. " strumline not supported in FNF-LÖVE")
 		end
 	})
 

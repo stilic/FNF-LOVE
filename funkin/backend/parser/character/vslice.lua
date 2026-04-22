@@ -7,16 +7,20 @@ function vslice.parse(data, name)
 	Parser.pset(char, "flip_x", data.flipX)
 	Parser.pset(char, "sprite", data.assetPath:gsub("shared:", ""))
 	Parser.pset(char, "antialiasing", not data.isPixel)
-
-	Parser.pset(char, "position", data.offsets)
-	Parser.pset(char, "camera_points", data.cameraOffsets)
 	Parser.pset(char, "scale", data.scale)
+	if data.offsets then
+		Parser.pset(char, "position", data.offsets)
+	end
+	if data.cameraOffsets then
+		Parser.pset(char, "camera_points", data.cameraOffsets)
+	end
 
 	char.voice_suffix = name:gsub("-[^-]*$", "")
 
 	local healthIconId = data.healthIcon and data.healthIcon.id or name
 	local isPixel = data.healthIcon and data.healthIcon.isPixel or false
-	Parser.pset(char, "icon", healthIconId .. (isPixel and "-pixel" or ""))
+	local should = isPixel and not healthIconId:endsWith("-pixel")
+	Parser.pset(char, "icon", healthIconId .. (should and "-pixel" or ""))
 
 	for _, anim in pairs(data.animations) do
 		local name = '' .. anim.name
@@ -24,16 +28,21 @@ function vslice.parse(data, name)
 			name = name:gsub("-hold", "-loop")
 		end
 
-		actualAnim = {
+		local actualAnim = {
 			name,
-			(anim.prefix or '') .. ((data.renderType == "animateatlas" or
-				(anim.prefix or ""):endsWith("0")) and "" or "0"),
+			(anim.prefix or ''),
 			anim.frameIndices or {},
 			anim.fps or 24,
 			anim.looped == true,
 			anim.offsets or {0, 0},
 			anim.assetPath
 		}
+		actualAnim[6][1] = actualAnim[6][1] * char.scale
+		actualAnim[6][2] = actualAnim[6][2] * char.scale
+
+		if not actualAnim[2]:endsWith("0") and data.renderType ~= "animateatlas" then
+			actualAnim[2] = actualAnim[2] .. "0"
+		end
 
 		table.insert(char.animations, actualAnim)
 	end

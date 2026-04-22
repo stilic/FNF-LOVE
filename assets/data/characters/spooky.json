@@ -1,19 +1,48 @@
 {
-	"animations": [
-		["cheer", "spooky kids YEAH!!", [], 24, false, [59, -20]],
-		["singLEFT", "note sing left", [], 24, false, [130, -10]],
-		["singRIGHT", "spooky sing right", [], 24, false, [-130, -14]],
-		["singDOWN", "spooky DOWN note", [], 24, false, [-50, -130]],
-		["danceLeft", "spooky dance idle", [0, 2, 12, 14], 12, false, [0, 0]],
-		["danceRight", "spooky dance idle", [8, 10, 12, 14], 12, false, [0, 0]],
-		["singUP", "spooky UP NOTE", [], 24, false, [-20, 26]]
-	],
-	"position": [0, 200],
-	"camera_points": [0, 0],
-	"flip_x": false,
-	"icon": "spooky",
-	"sprite": "characters/spooky_kids_assets",
-	"antialiasing": true,
-	"sing_duration": 8,
-	"scale": 1
+  "version": "1.0.0",
+  "name": "Spooky Kids",
+  "assetPath": "characters/SpookyKids",
+  "singTime": 8.0,
+  "startingAnimation": "danceRight",
+  "animations": [
+    {
+      "name": "danceLeft",
+      "prefix": "Idle",
+      "frameIndices": [0, 1, 2, 3, 4, 5, 6, 7],
+      "frameRate": 24,
+      "offsets": [0, 0]
+    },
+    {
+      "name": "danceRight",
+      "prefix": "Idle",
+      "frameIndices": [8, 9, 10, 11, 12, 13, 14, 15],
+      "frameRate": 24,
+      "offsets": [0, 0]
+    },
+    {
+      "name": "singLEFT",
+      "prefix": "SingLEFT",
+      "offsets": [130, -10]
+    },
+    {
+      "name": "singDOWN",
+      "prefix": "SingDOWN",
+      "offsets": [-50, -130]
+    },
+    {
+      "name": "singUP",
+      "prefix": "SingUP",
+      "offsets": [-20, 26]
+    },
+    {
+      "name": "singRIGHT",
+      "prefix": "SingRIGHT",
+      "offsets": [-130, -14]
+    },
+    {
+      "name": "cheer",
+      "prefix": "Cheer",
+      "offsets": [0, 0]
+    }
+  ]
 }

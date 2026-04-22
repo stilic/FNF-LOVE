@@ -5,56 +5,55 @@ local Highscore = {
 	}
 }
 
+Highscore.save = game.save("highscores")
+
+function Highscore.load()
+	Highscore.save:load()
+
+	if Highscore.save.data and Highscore.save.data.songs then
+		Highscore.scores = Highscore.save.data
+	else
+		Highscore.save.data = Highscore.scores
+	end
+end
+
 function Highscore.saveScore(song, score, diff)
 	local formatSong = paths.formatToSongPath(song) .. '-' .. diff:lower()
 
-	if Highscore.scores.songs[formatSong] then
-		if Highscore.scores.songs[formatSong] < score then
-			Highscore.scores.songs[formatSong] = score
-		end
-	else
+	if not Highscore.scores.songs[formatSong] or Highscore.scores.songs[formatSong] < score then
 		Highscore.scores.songs[formatSong] = score
 	end
-	game.save.data.scores = Highscore.scores
+
+	Highscore.save.data = Highscore.scores
+	Highscore.save:save()
 end
 
 function Highscore.saveWeekScore(week, score, diff)
 	local formatWeek = week .. '-' .. diff:lower()
 
-	if Highscore.scores.weeks[formatWeek] then
-		if Highscore.scores.weeks[formatWeek] < score then
-			Highscore.scores.weeks[formatWeek] = score
-		end
-	else
+	if not Highscore.scores.weeks[formatWeek] or Highscore.scores.weeks[formatWeek] < score then
 		Highscore.scores.weeks[formatWeek] = score
 	end
-	game.save.data.scores = Highscore.scores
+
+	Highscore.save.data = Highscore.scores
+	Highscore.save:save()
 end
 
 function Highscore.getScore(song, diff)
 	local formatSong = paths.formatToSongPath(song) .. '-' .. diff:lower()
-
-	if Highscore.scores.songs[formatSong] == nil then
-		Highscore.scores.songs[formatSong] = 0
-	end
-
-	return Highscore.scores.songs[formatSong]
+	return Highscore.scores.songs[formatSong] or 0
 end
 
 function Highscore.getWeekScore(week, diff)
 	local formatWeek = week .. '-' .. diff:lower()
-
-	if Highscore.scores.weeks[formatWeek] == nil then
-		Highscore.scores.weeks[formatWeek] = 0
-	end
-
-	return Highscore.scores.weeks[formatWeek]
+	return Highscore.scores.weeks[formatWeek] or 0
 end
 
-function Highscore.load()
-	if game.save.data.scores then
-		Highscore.scores = game.save.data.scores
-	end
+function Highscore.resetAll()
+	Highscore.save:delete()
+	Highscore.scores = {songs = {}, weeks = {}}
+	Highscore.save.data = Highscore.scores
+	Highscore.save:save()
 end
 
 return Highscore

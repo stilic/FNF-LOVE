@@ -1,8 +1,26 @@
 ---@class Sound:Basic
-local Sound = Basic:extend("Sound")
+local Sound = Basic:extend("Sound", true)
 
 function Sound:new(x, y)
 	Sound.super.new(self)
+
+	self._volume = 1
+	self._pitch = 1
+	self._duration = 0
+	self._wasPlaying = false
+	self._fadeElapsed = 0
+	self._fadeDuration = 0
+	self._startVolume = 0
+	self._endVolume = 0
+	self._paused = false
+	self._isFinished = false
+	self._isSource = false
+	self._source = nil
+	self.autoDestroy = false
+	self.looped = false
+	self.radius = 0
+	self.active = false
+
 	self:revive()
 	self.visible, self.cameras = nil, nil
 end
@@ -30,8 +48,8 @@ function Sound:reset(cleanup, x, y)
 	self.radius = 0
 
 	self:cancelFade()
-	self.volume = 1
-	self.pitch = 1
+	self._volume = 1
+	self._pitch = 1
 end
 
 function Sound:fade(duration, startVolume, endVolume)
@@ -42,7 +60,7 @@ function Sound:fade(duration, startVolume, endVolume)
 end
 
 function Sound:cancelFade()
-	self._fadeDuration = nil
+	self._fadeDuration = 0
 end
 
 function Sound:cleanup()
@@ -63,8 +81,8 @@ function Sound:cleanup()
 end
 
 function Sound:destroy()
-	Sound.super.destroy(self)
 	self:cleanup()
+	Sound.super.destroy(self)
 end
 
 function Sound:kill()
@@ -96,24 +114,25 @@ function Sound:play(volume, looped, pitch, restart)
 	if not self.active or not self._source then return self end
 
 	if restart then
-		pcall(self._source.stop, self._source)
+		self._source:stop()
 	elseif self:isPlaying() then
 		return self
 	end
 
 	self._paused = false
 	self._isFinished = false
-	self.volume = volume
-	self.looped = looped
-	self.pitch = pitch
 
-	pcall(self._source.play, self._source)
+	self:set_volume(volume)
+	if looped ~= nil then self:set_looped(looped) end
+	self:set_pitch(pitch)
+
+	self._source:play()
 	return self
 end
 
 function Sound:pause()
 	self._paused = true
-	if self._source then pcall(self._source.pause, self._source) end
+	if self._source then self._source:pause() end
 	return self
 end
 
@@ -141,13 +160,13 @@ function Sound:update(dt)
 
 	self._isFinished = isFinished
 
-	if self._fadeDuration then
+	if self._fadeDuration > 0 then
 		self._fadeElapsed = self._fadeElapsed + dt
 		if self._fadeElapsed < self._fadeDuration then
-			self.volume = math.lerp(self._startVolume, self._endVolume, self._fadeElapsed / self._fadeDuration)
+			self:set_volume(math.lerp(self._startVolume, self._endVolume, self._fadeElapsed / self._fadeDuration))
 		else
-			self.volume = self._endVolume
-			self._fadeStartTime, self._fadeDuration, self._startVolume, self._endVolume = nil
+			self:set_volume(self._endVolume)
+			self._fadeDuration = 0
 		end
 	end
 end
@@ -167,8 +186,12 @@ end
 
 function Sound:isPlaying()
 	if not self._source then return false end
-	local success, playing = pcall(self._source.isPlaying, self._source)
-	return success and playing or false
+	local s, res = pcall(self._source.isPlaying, self._source)
+	if not s then
+		self:cleanup() -- source was released!
+		return false
+	end
+	return res
 end
 
 function Sound:isFinished()
@@ -224,9 +247,15 @@ function Sound:set_looped(loop)
 	self._source:setLooping(loop or self.looped or false)
 end
 
-function Sound:__index(k)
-	local g = rawget(self, "get_" .. k) or rawget(getmetatable(self), "get_" .. k)
-	return g and g(self) or rawget(self, k) or getmetatable(self)[k]
-end
+Sound.__getters.time = Sound.get_time
+Sound.__getters.volume = Sound.get_volume
+Sound.__getters.pitch = Sound.get_pitch
+Sound.__getters.duration = Sound.get_duration
+Sound.__getters.looped = Sound.get_looped
+
+Sound.__setters.time = Sound.set_time
+Sound.__setters.volume = Sound.set_volume
+Sound.__setters.pitch = Sound.set_pitch
+Sound.__setters.looped = Sound.set_looped
 
 return Sound

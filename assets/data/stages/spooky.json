@@ -1,0 +1,73 @@
+{
+  "props": [
+    {
+      "name": "base",
+      "zIndex": 0,
+      "assetPath": "#32325A",
+      "position": [-500, -260],
+      "scale": [3500, 2000],
+      "scroll": [0, 0]
+    },
+    {
+      "name": "window",
+      "zIndex": 10,
+      "assetPath": "window",
+      "position": [243, 68],
+      "scale": [1, 1],
+      "scroll": [1, 1],
+      "animType": "sparrow",
+      "animations": []
+    },
+    {
+      "name": "windowBlend",
+      "zIndex": 11,
+      "assetPath": "window",
+      "position": [243, 68],
+      "scale": [1, 1],
+      "scroll": [1, 1],
+      "alpha": 0.22,
+      "animType": "sparrow",
+      "animations": []
+    },
+    {
+      "name": "back",
+      "zIndex": 20,
+      "assetPath": "bg_shadows",
+      "position": [-450, -100],
+      "scale": [1, 1],
+      "scroll": [1, 1],
+      "animType": "sparrow",
+      "animations": []
+    },
+    {
+      "name": "reflect",
+      "zIndex": 30,
+      "assetPath": "windowReflect",
+      "position": [262, 609],
+      "scale": [1, 1],
+      "scroll": [1, 1],
+      "alpha": 0.5,
+      "animType": "sparrow",
+      "animations": []
+    }
+  ],
+  "cameraZoom": 0.9,
+  "version": "1.0.0",
+  "characters": {
+    "bf": {
+      "zIndex": 300,
+      "position": [1150, 750],
+      "cameraOffsets": [-200, -100]
+    },
+    "dad": {
+      "zIndex": 200,
+      "position": [300, 750],
+      "cameraOffsets": [260, -50]
+    },
+    "gf": {
+      "zIndex": 100,
+      "cameraOffsets": [80, 20],
+      "position": [712, 710]
+    }
+  }
+}

@@ -1,34 +1,30 @@
 function event(params)
-	local isTable = type(params.v) == "table"
+	local table = type(params.v) == "table"
+	local charID = ((table and params.v.char or tonumber(params.v)) or 0) + 1
+	local ease = table and params.v.ease or "CLASSIC"
+	local x, y = 0, 0
 
-	local n = isTable and params.v.char or tonumber(params.v)
-	local ox, oy = isTable and params.v.x or 0, isTable and params.v.y or 0
-	cameraOffset:set(-ox, -oy)
+	state.camTarget = nil
 
-	local notefield = state.notefields[n + 1]
-	if notefield then
-		local char = notefield.character
-		if char then
-			local camX, camY = state:getCameraPosition(char)
-			ox, oy = camX, camY
-			state.camTarget = char
-		end
+	cameraOffset:set(table and -(params.v.x or 0), table and -(params.v.y or 0))
+
+	if notefields[charID] and notefields[charID].character then
+		local character = notefields[charID].character
+		x, y = getCameraPosition(character)
+		state.camTarget = character
 	end
 
-	if isTable and params.v.ease then
-		switch(params.v.ease, {
-			["CLASSIC"] = function() state:cameraMovement(ox, oy) end,
-			["INSTANT"] = function() state:cameraMovement(ox, oy, "linear", 0) end,
-			default = function()
-				state:cameraMovement(
-					ox,
-					oy,
-					params.v.easeDir and params.v.ease .. params.v.easeDir or params.v.ease,
-					stepCrotchet * params.v.duration / 1000
-				)
-			end
-		})
+	if ease == "CLASSIC" then
+		cameraMovement(x, y)
+	elseif ease == "INSTANT" then
+		cameraMovement(x, y, "linear", 0)
 	else
-		state:cameraMovement(ox, oy)
+		if table and ease ~= "linear" and params.v.easeDir then
+			ease = ease .. params.v.easeDir
+		end
+		if Ease[ease] == nil then
+			Logger.log("warn", "Invalid ease function: " .. ease)
+		end
+		cameraMovement(x, y, ease, stepCrotchet * params.v.duration / 1000)
 	end
 end

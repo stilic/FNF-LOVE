@@ -1,30 +1,63 @@
 {
-	"animations": [
-		["idle", "Parent Christmas Idle", [], 24, false, [670, 450]],
-		["singUP", "Parent Up Note Dad", [], 24, false, [0, 0]],
-		["singDOWN", "Parent Down Note Dad", [], 24, false, [0, 0]],
-		["singLEFT", "Parent Left Note Dad", [], 24, false, [0, 0]],
-		["singRIGHT", "Parent Right Note Dad", [], 24, false, [0, 0]],
-		["singRIGHT-alt", "Parent Right Note Mom", [], 24, false, [0, 0]],
-		["singDOWN-alt", "Parent Down Note Mom", [], 24, false, [0, 0]],
-		["singLEFT-alt", "Parent Left Note Mom", [], 24, false, [0, 0]],
-		["singUP-alt", "Parent Up Note Mom", [], 24, false, [0, 0]],
-		["idle-loop", "Parent Christmas Idle", [10, 11, 12, 13], 24, true, [670, 450]],
-		["singUP-loop", "Parent Up Note Dad", [10, 11, 12, 13], 24, true, [0, 0]],
-		["singLEFT-loop", "Parent Left Note Dad", [12, 13, 14, 15], 24, true, [0, 0]],
-		["singDOWN-loop", "Parent Down Note Dad", [11, 12, 13, 14], 24, true, [0, 0]],
-		["singRIGHT-loop", "Parent Right Note Dad", [12, 13, 14, 15], 24, true, [0, 0]],
-		["singRIGHT-alt-loop", "Parent Right Note Mom", [11, 12, 13, 14], 24, true, [0, 0]],
-		["singUP-alt-loop", "Parent Up Note Mom", [10, 11, 12, 13], 24, true, [0, 0]],
-		["singLEFT-alt-loop", "Parent Left Note Mom", [11, 12, 13, 14], 24, true, [0, 0]],
-		["singDOWN-alt-loop", "Parent Down Note Mom", [11, 12, 13, 14], 24, true, [0, 0]]
-	],
-	"position": [260, 450],
-	"camera_points": [-260, 32],
-	"flip_x": false,
-	"icon": "parents",
-	"sprite": "characters/mom_dad_christmas_assets",
-	"antialiasing": true,
-	"sing_duration": 8,
-	"scale": 1
+  "version": "1.0.0",
+  "name": "Mommy and Daddy (Festive)",
+  "assetPath": "characters/momDadChristmas",
+  "renderType": "animateatlas",
+  "animations": [
+    {"name": "idle", "prefix": "idle"},
+    {"name": "singLEFT", "prefix": "dad left"},
+    {"name": "singLEFT-alt", "prefix": "mom left"},
+    {"name": "singDOWN", "prefix": "dad down"},
+    {"name": "singDOWN-alt", "prefix": "mom down"},
+    {"name": "singUP", "prefix": "dad up"},
+    {"name": "singUP-alt", "prefix": "mom up"},
+    {"name": "singRIGHT", "prefix": "dad right"},
+    {"name": "singRIGHT-alt", "prefix": "mom right"},
+
+    {
+      "name": "idle-hold",
+      "prefix": "idle loop",
+      "looped": true
+    },
+    {
+      "name": "singLEFT-hold",
+      "prefix": "dad leftloop",
+      "looped": true
+    },
+    {
+      "name": "singDOWN-hold",
+      "prefix": "dad downloop",
+      "looped": true
+    },
+    {
+      "name": "singUP-hold",
+      "prefix": "dad uploop",
+      "looped": true
+    },
+    {
+      "name": "singRIGHT-hold",
+      "prefix": "dad rightloop",
+      "looped": true
+    },
+    {
+      "name": "singLEFT-alt-hold",
+      "prefix": "mom leftloop",
+      "looped": true
+    },
+    {
+      "name": "singDOWN-alt-hold",
+      "prefix": "mom downloop",
+      "looped": true
+    },
+    {
+      "name": "singUP-alt-hold",
+      "prefix": "mom uploop",
+      "looped": true
+    },
+    {
+      "name": "singRIGHT-alt-hold",
+      "prefix": "mom rightloop",
+      "looped": true
+    }
+  ]
 }

@@ -284,6 +284,7 @@ function StoryMenuState:updateText()
 	local leWeek = self.weeksData[self.weekList.curSelected]
 	local songs = table.concat(leWeek.songs, "\n")
 	self.txtTrackList.content = 'TRACKS\n\n' .. songs
+	self.txtTrackList:updateHitbox()
 	self.txtTrackList:screenCenter("x")
 	self.txtTrackList.x = self.txtTrackList.x - game.width * 0.35
 
@@ -324,6 +325,7 @@ function StoryMenuState:leave()
 	self.script:call("leave")
 	if self.notCreated then
 		self.script:call("postLeave")
+		self.script:close()
 		return
 	end
 

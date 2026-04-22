@@ -1,3 +1,9 @@
+local ffi = require("ffi")
+
+local math = math
+local max, min, round = math.max, math.min, math.round
+local atan, fastsin, fastcos = math.atan, math.fastsin, math.fastcos
+
 local Note = ActorSprite:extend("Note")
 
 Note.safeZoneOffset = 1 / 6
@@ -6,14 +12,21 @@ function Note.toPos(time, speed)
 	return time * 450 * speed
 end
 
-Note.defaultSustainSegments = 3 -- also resets on PlayState.create
+Note.defaultSustainSegments = 3
 
-local susMesh, susVerts
+local susMesh, susData, susVerts
 function Note.init()
 	if susMesh then return end
 	susMesh = love.graphics.newMesh(ActorSprite.vertexFormat, 16, "strip")
-	susVerts = table.new(16, 0)
-	for i = 1, 16 do susVerts[i] = table.new(9, 0) end
+	susData = love.data.newByteData(ffi.sizeof("ActorVertex") * 16)
+	susVerts = ffi.cast("ActorVertex*", susData:getFFIPointer())
+
+	for i = 0, 15 do
+		susVerts[i].r = 255
+		susVerts[i].g = 255
+		susVerts[i].b = 255
+		susVerts[i].a = 255
+	end
 end
 
 function Note:new(time, direction, sustainTime, type, skin)
@@ -26,7 +39,7 @@ function Note:new(time, direction, sustainTime, type, skin)
 	self.time = time
 	self._targetTime = 0
 
-	self.wasGoodHit, self.wasGoodSustainHit, self.wasFullSustainHit,
+	self.wasGoodHit, self.wasGoodSustainHit, self.wasFullSustainHit
 	self.tooLate, self.ignoreNote, self.lastPress = false, false, false, false, false, nil
 	self.priority, self.earlyHitMult, self.lateHitMult = 0, 1, 1
 	self.showNote, self.showNoteOnHit = true, false
@@ -35,7 +48,42 @@ function Note:new(time, direction, sustainTime, type, skin)
 
 	self.sustainSegments = Note.defaultSustainSegments
 
+	self.__lastScoreTime = nil
+
 	self.direction, self.data = direction, direction -- data is for backward compatibilty
+	self:setSkin(skin)
+	self:setSustainTime(sustainTime)
+end
+
+function Note:reset(time, direction, sustainTime, type, skin)
+	self.ignoreAffectByGroup = true
+
+	self.x, self.y, self.z = 0, 0, 0
+	self.scale.x, self.scale.y, self.scale.z = 0.7, 0.7, 1
+	self.zoom.x, self.zoom.y, self.zoom.z = 1, 1, 1
+	self.rotation.x, self.rotation.y, self.rotation.z = 0, 0, 0
+	self.offset.x, self.offset.y, self.offset.z = 0, 0, 0
+	self.origin.x, self.origin.y, self.origin.z = 0, 0, 0
+	self.alpha, self.angle, self.blend = 1, 0, "alpha"
+
+	self.speed, self.time, self._targetTime = 1, time, 0
+
+	self.wasGoodHit, self.wasGoodSustainHit,
+	self.tooLate, self.ignoreNote, self.lastPress = false, false, false, false, nil
+	self.priority, self.earlyHitMult, self.lateHitMult = 0, 1, 1
+	self.showNote, self.showNoteOnHit = true, false
+	self.type, self.group, self.character = type, nil, nil
+
+	self.sustainSegments = Note.defaultSustainSegments
+	self.__lastScoreTime = nil
+
+	self.isGhost, self.sustainTime, self.skin, self.shader = false, nil, nil, nil
+	if self.__shaderAnimations then
+		table.clear(self.__shaderAnimations)
+	end
+	self:destroySustain()
+
+	self.direction, self.data = direction, direction
 	self:setSkin(skin)
 	self:setSustainTime(sustainTime)
 end
@@ -76,7 +124,7 @@ function Note:loadSkinData(skinData, name, direction, noRgb)
 	local anims, tex = data.animations, "skins/" .. skinData.skin .. "/" .. data.sprite
 	if anims then
 		if data.isPixel then
-			self:loadTexture(paths.getImage(tex), true, data.frameWidth, data.frameHeight)
+			self:loadTexture(paths.getImage(tex, true), true, data.frameWidth, data.frameHeight)
 		else
 			self:setFrames(paths.getSparrowAtlas(tex))
 		end
@@ -177,6 +225,8 @@ end
 function Note:destroySustain()
 	if self.sustainEnd and self.sustainEnd.destroy then self.sustainEnd:destroy() end
 	if self.sustain and self.sustain.destroy then self.sustain:destroy() end
+
+	self.sustainEnd, self.sustain = nil, nil
 end
 
 function Note:ghost()
@@ -209,14 +259,14 @@ function Note:play(anim, force, frame, dontShader, skipName)
 	end
 end
 
-function Note:_canDraw()
+function Note:canDraw()
 	if self.sustain then
 		self.sustain.cameras = self.cameras
 		self.sustainEnd.cameras = self.cameras
 	end
 	return (self.texture ~= nil and (self.width ~= 0 or self.height ~= 0)) and
-		(Note.super._canDraw(self) or (
-			self.sustain and (self.sustain:_canDraw() or self.sustainEnd:_canDraw())
+		(Note.super.canDraw(self) or (
+			self.sustain and (self.sustain:canDraw() or self.sustainEnd:canDraw())
 		))
 end
 
@@ -296,11 +346,11 @@ function Note:__render(camera)
 
 		local fov, drawSize, drawSizeOffset = self.fov, grp and grp.drawSize or 800, grp and grp.drawSizeOffset or 0
 		local suspos, minbound, maxbound = Note.toPos(time + self.sustainTime - target, speed),
-			self.pressed and 0 or self.lastPress and Note.toPos(self.lastPress - target, speed) or math.max(pos, -drawSize / 2 + drawSizeOffset - ny),
+			self.pressed and 0 or self.lastPress and Note.toPos(self.lastPress - target, speed) or max(pos, -drawSize / 2 + drawSizeOffset - ny),
 			drawSize / 2 + drawSizeOffset - ny
 
 		local segments = self.sustainSegments
-		local vertLens = math.min(2 + segments * 2, 16)
+		local vertLens = min(2 + segments * 2, 16)
 
 		if vertLens > 2 then
 			local susend, gotVerts = self.sustainEnd
@@ -329,7 +379,8 @@ function Note:__render(camera)
 					grx, gry, grz, gox, goy, goz
 				)
 				local pvx, pvy = toScreen(vx + gx, vy + gy, vz + gz, fov)
-				local enduv, vert, aa, as, ac
+				local enduv, aa, as, ac
+
 				for vi = 1, vertLens, 2 do
 					getValues(rec, suspos, Receptor.getDefaultValues(values)); applyMod(mods, beat, suspos, par, dir)
 					vx, vy, vz = worldSpin(
@@ -339,28 +390,31 @@ function Note:__render(camera)
 						grx, gry, grz, gox, goy, goz
 					)
 
-					vert, vx, vy, vz = susVerts[vi], toScreen(vx + gx, vy + gy, vz + gz, fov)
+					vx, vy, vz = toScreen(vx + gx, vy + gy, vz + gz, fov)
 
-					aa = -math.atan((pvx - vx) / (pvy - vy))
-					as, ac, pvx, pvy = math.fastsin(aa) * vz, math.fastcos(aa) * vz, vx, vy
+					aa = -atan((pvx - vx) / (pvy - vy))
+					as, ac, pvx, pvy = fastsin(aa) * vz, fastcos(aa) * vz, vx, vy
 
-					vi, vert[1], vert[2], vert[3], vert[4], vert[5], vert[6], vert[7], vert[8], vert[9] = vi + 1,
-						vx - hfw * ac, vy - hfw * as, uvx * vz, (uvy + uvh) * vz, vz, 1, 1, 1, values.alpha
+					local ptr1 = susVerts[vi - 1]
+					ptr1.x, ptr1.y = vx - hfw * ac, vy - hfw * as
+					ptr1.u, ptr1.v, ptr1.w = uvx * vz, (uvy + uvh) * vz, vz
+					ptr1.a = values.alpha * 255
 
-					vert = susVerts[vi]
-					vert[1], vert[2], vert[3], vert[4], vert[5], vert[6], vert[7], vert[8], vert[9] =
-						vx + hfw * ac, vy + hfw * as, uvxw * vz, (uvy + uvh) * vz, vz, 1, 1, 1, values.alpha
+					local ptr2 = susVerts[vi]
+					ptr2.x, ptr2.y = vx + hfw * ac, vy + hfw * as
+					ptr2.u, ptr2.v, ptr2.w = uvxw * vz, (uvy + uvh) * vz, vz
+					ptr2.a = values.alpha * 255
 
-					if vi < vertLens then suspos, uvh = suspos - fh, uvh - fhs end
+					if vi + 1 < vertLens then suspos, uvh = suspos - fh, uvh - fhs end
 					if enduv then
-						gotVerts = vi
+						gotVerts = vi + 1
 						break
 					elseif suspos < minbound then
 						suspos, uvh, enduv = minbound, uvh - ((suspos - minbound) / ssc.y / th / segments), true
 					end
 				end
 
-				susMesh:setDrawRange(1, gotVerts); susMesh:setVertices(susVerts); love.graphics.draw(susMesh)
+				susMesh:setDrawRange(1, gotVerts); susMesh:setVertices(susData); love.graphics.draw(susMesh)
 			end
 
 			if suspos >= minbound then
@@ -372,9 +426,9 @@ function Note:__render(camera)
 					if sus.antialiasing then uvy, fh = uvy + 1, fh - 2 end
 					uvx, uvy, uvxw, uvh = uvx / tw, uvy / th, (hfw + uvx) / tw, fh / th
 				end
-				local ssy = math.max(fh * ssc.y, 64) / fh
-				hfw, fh = hfw * ssc.x / 2, math.max(fh * ssc.y, 64)
-				segments = segments * math.max(math.round(fh / 128), 1)
+				local ssy = max(fh * ssc.y, 64) / fh
+				hfw, fh = hfw * ssc.x / 2, max(fh * ssc.y, 64)
+				segments = segments * max(round(fh / 128), 1)
 				fh = fh / segments
 
 				tex:setFilter(sus.antialiasing and "linear" or "nearest")
@@ -383,24 +437,31 @@ function Note:__render(camera)
 				susMesh:setTexture(tex)
 
 				getValues(rec, suspos + 1, Receptor.getDefaultValues(values)); applyMod(mods, beat, suspos + 1, par, dir)
-				suspos, vertLens, vx, vy, vz = math.min(suspos, maxbound), math.min(2 + segments * 2, 16), worldSpin(
+				suspos, vertLens, vx, vy, vz = min(suspos, maxbound), min(2 + segments * 2, 16), worldSpin(
 					(snx + values.x) * gsx,
 					(sny + values.y) * gsy,
 					(snz + values.z) * gsz,
 					grx, gry, grz, gox, goy, goz
 				)
 				local pvx, pvy = toScreen(vx + gx, vy + gy, vz + gz, fov)
-				local uvfh, fhs, uvyh, vi, enduv, vert, aa, as, ac = uvh, uvh / segments, uvy + uvh, 1
-				if gotVerts then
-					vert, vi, suspos, uvfh = susVerts[gotVerts], 3, suspos - fh, uvfh - fhs
-					susVerts[2][1], susVerts[2][2], susVerts[2][3], susVerts[2][4], susVerts[2][5],
-					susVerts[2][6], susVerts[2][7], susVerts[2][8], susVerts[2][9] =
-						vert[1], vert[2], uvxw * vert[5], uvyh * vert[5], vert[5], vert[6], vert[7], vert[8], vert[9]
+				local uvfh, fhs, uvyh, vi, enduv, aa, as, ac = uvh, uvh / segments, uvy + uvh, 1
 
-					vert = susVerts[gotVerts - 1]
-					susVerts[1][1], susVerts[1][2], susVerts[1][3], susVerts[1][4], susVerts[1][5],
-					susVerts[1][6], susVerts[1][7], susVerts[1][8], susVerts[1][9] =
-						vert[1], vert[2], uvx * vert[5], uvyh * vert[5], vert[5], vert[6], vert[7], vert[8], vert[9]
+				if gotVerts then
+					local vert2 = susVerts[gotVerts - 1]
+					local vert1 = susVerts[gotVerts - 2]
+
+					suspos, uvfh = suspos - fh, uvfh - fhs
+					vi = 3
+
+					local dst2 = susVerts[1]
+					dst2.x, dst2.y = vert2.x, vert2.y
+					dst2.u, dst2.v, dst2.w = uvxw * vert2.w, uvyh * vert2.w, vert2.w
+					dst2.a = vert2.a
+
+					local dst1 = susVerts[0]
+					dst1.x, dst1.y = vert1.x, vert1.y
+					dst1.u, dst1.v, dst1.w = uvx * vert1.w, uvyh * vert1.w, vert1.w
+					dst1.a = vert1.a
 
 					if suspos < minbound then
 						suspos, uvfh, enduv = minbound, uvfh - ((suspos - minbound) / ssy / th / segments), true
@@ -416,33 +477,45 @@ function Note:__render(camera)
 						grx, gry, grz, gox, goy, goz
 					)
 
-					vert, vx, vy, vz = susVerts[vi], toScreen(vx + gx, vy + gy, vz + gz, fov)
+					vx, vy, vz = toScreen(vx + gx, vy + gy, vz + gz, fov)
 
-					aa = -math.atan((pvx - vx) / (pvy - vy))
-					as, ac, pvx, pvy = math.fastsin(aa) * vz, math.fastcos(aa) * vz, vx, vy
+					aa = -atan((pvx - vx) / (pvy - vy))
+					as, ac, pvx, pvy = fastsin(aa) * vz, fastcos(aa) * vz, vx, vy
 
-					vi, vert[1], vert[2], vert[3], vert[4], vert[5], vert[6], vert[7], vert[8], vert[9] = vi + 1,
-						vx - hfw * ac, vy - hfw * as, uvx * vz, (uvy + uvfh) * vz, vz, 1, 1, 1, values.alpha
+					local ptr1 = susVerts[vi - 1]
+					ptr1.x, ptr1.y = vx - hfw * ac, vy - hfw * as
+					ptr1.u, ptr1.v, ptr1.w = uvx * vz, (uvy + uvfh) * vz, vz
+					ptr1.a = values.alpha * 255
+					vi = vi + 1
 
-					vert = susVerts[vi]
-					vi, vert[1], vert[2], vert[3], vert[4], vert[5], vert[6], vert[7], vert[8], vert[9] = vi + 1,
-						vx + hfw * ac, vy + hfw * as, uvxw * vz, (uvy + uvfh) * vz, vz, 1, 1, 1, values.alpha
+					local ptr2 = susVerts[vi - 1]
+					ptr2.x, ptr2.y = vx + hfw * ac, vy + hfw * as
+					ptr2.u, ptr2.v, ptr2.w = uvxw * vz, (uvy + uvfh) * vz, vz
+					ptr2.a = values.alpha * 255
+					vi = vi + 1
 
 					suspos, uvfh = suspos - fh, uvfh - fhs
 					if enduv or vi > vertLens then
-						susMesh:setDrawRange(1, vi - 1); susMesh:setVertices(susVerts); love.graphics.draw(susMesh)
+						susMesh:setDrawRange(1, vi - 1); susMesh:setVertices(susData); love.graphics.draw(susMesh)
 
 						if enduv then
 							break
 						else
-							susVerts[2][1], susVerts[2][2], susVerts[2][3], susVerts[2][4], susVerts[2][5],
-							susVerts[2][6], susVerts[2][7], susVerts[2][8], susVerts[2][9] =
-								vert[1], vert[2], vert[3], uvyh * vert[5], vert[5], vert[6], vert[7], vert[8], vert[9]
+							local srcRight = susVerts[vi - 2]
+							local srcLeft  = susVerts[vi - 3]
 
-							vert, uvfh, vi = susVerts[vi - 2], uvh - fhs, 3
-							susVerts[1][1], susVerts[1][2], susVerts[1][3], susVerts[1][4], susVerts[1][5],
-							susVerts[1][6], susVerts[1][7], susVerts[1][8], susVerts[1][9] =
-								vert[1], vert[2], vert[3], uvyh * vert[5], vert[5], vert[6], vert[7], vert[8], vert[9]
+							local dstRight = susVerts[1]
+							dstRight.x, dstRight.y = srcRight.x, srcRight.y
+							dstRight.u, dstRight.v, dstRight.w = srcRight.u, uvyh * srcRight.w, srcRight.w
+							dstRight.a = srcRight.a
+
+							uvfh = uvh - fhs
+							vi = 3
+
+							local dstLeft = susVerts[0]
+							dstLeft.x, dstLeft.y = srcLeft.x, srcLeft.y
+							dstLeft.u, dstLeft.v, dstLeft.w = srcLeft.u, uvyh * srcLeft.w, srcLeft.w
+							dstLeft.a = srcLeft.a
 						end
 					end
 

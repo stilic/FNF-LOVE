@@ -18,7 +18,7 @@ function Receptor:new(x, y, direction, skin)
 	self._x, self._y, self._z = x, y, 0
 
 	self.holdTime = 0
-	self.__strokeDelta = 0
+	self.hitSustain = false
 
 	self.__shaderAnimations = {}
 	self.hideReceptor = false
@@ -136,7 +136,7 @@ function Receptor:setDirection(direction)
 
 	local skin = self.skin
 	if skin.glow then
-		self.glow = Sprite()
+		self.glow = ActorSprite()
 		self.glow.offset.z, self.glow.origin.z, self.glow.__render = 0, 0, __NIL__
 		Note.loadSkinData(self.glow, skin, "glow", direction)
 	end
@@ -190,7 +190,9 @@ function Receptor:update(dt)
 		self.holdTime = self.holdTime - dt
 		if self.holdTime <= 0 then
 			self.holdTime = 0
-			self:play(self.parent.bot and "static" or "pressed")
+			local anim = self.parent.bot and "static" or "pressed"
+			if self.hitSustain then anim = "confirm" end
+			self:play(anim, true)
 		end
 	end
 
@@ -216,7 +218,7 @@ function Receptor:update(dt)
 						cover:play(anim, true)
 					end
 					cover.visible = hasInput
-					cover.x, cover.y, cover.z = self._x - cover.width / 2 + 2, self._y - cover.height / 2 - 6, self._z
+					cover.x, cover.y, cover.z = self._x - cover.width / 2, self._y - cover.height / 2 - 4, self._z
 				end
 				if note.wasGoodSustainHit then
 					if not note.wasFullSustainHit or not self.parent.canSpawnSplash or not ClientPrefs.data.noteSplash then
@@ -224,7 +226,7 @@ function Receptor:update(dt)
 					elseif anim ~= "end" then
 						cover:play("end")
 						cover:updateHitbox()
-						cover.x, cover.y, cover.visible = cover.x - cover.width / 6.3, cover.y - cover.height / 9, true
+						cover.x, cover.y, cover.visible = cover.x - cover.width / 6.3, cover.y - cover.height / 8, true
 					end
 				end
 				if cover.animation.finished then
@@ -245,6 +247,7 @@ function Receptor:play(anim, force, frame, dontShader, isSplashOrCover)
 	local toPlay = anim .. "-note" .. self.direction
 	toPlay = self.animation:has(toPlay) and toPlay or anim
 	self.animation:play(toPlay, force, frame)
+	self.hitSustain = false
 
 	if not isSplashOrCover then
 		if anim == "confirm" and self.glow then

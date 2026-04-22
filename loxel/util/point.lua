@@ -1,65 +1,46 @@
--- point class. (kinda) supports a third z value as well
+local ffi = require("ffi")
 
-local Point = Classic:extend("Point")
+local PointCData
+local PointMethods = {}
 
--- local pool = {}
-
--- function Point.get(x, y, z)
-	-- if #pool > 0 then
-		-- local instance = table.remove(pool)
-		-- if type(instance) == "table" then
-			-- setmetatable(instance, Point)
-			-- instance:zero():set(x or instance.x, y or instance.y, z or instance.z)
-			-- return instance
-		-- end
-	-- end
-
-	-- return Point(x, y, z)
--- end
-
--- function Point.repool(obj)
-	-- table.insert(pool, obj)
--- end
-
-function Point:new(x, y, z)
+function PointMethods:new(x, y, z)
 	self.x = x or 0
 	self.y = y or 0
 	self.z = z or 0
-end
-
-function Point:clone() return Point(self.x, self.y, self.z) end
-
-function Point:add(other)
-	self.x = self.x + other.x
-	self.y = self.y + other.y
-	self.z = self.z + (other.z or 0)
 	return self
 end
 
-function Point.static_add(a, b)
-	return Point(
-		a.x + b.x,
-		a.y + b.y,
-		(a.z or 0) + (b.z or 0)
-	)
+function PointMethods:clone()
+	return PointCData(self.x, self.y, self.z)
 end
 
-function Point:sub(other)
-	self.x = self.x - other.x
-	self.y = self.y - other.y
-	self.z = self.z - (other.z or 0)
+function PointMethods:add(other)
+	if type(other) == "number" then
+		self.x = self.x + other
+		self.y = self.y + other
+		self.z = self.z + other
+	else
+		self.x = self.x + other.x
+		self.y = self.y + other.y
+		self.z = self.z + (other.z or 0)
+	end
 	return self
 end
 
-function Point.static_sub(a, b)
-	return Point(
-		a.x - b.x,
-		a.y - b.y,
-		(a.z or 0) - (b.z or 0)
-	)
+function PointMethods:sub(other)
+	if type(other) == "number" then
+		self.x = self.x - other
+		self.y = self.y - other
+		self.z = self.z - other
+	else
+		self.x = self.x - other.x
+		self.y = self.y - other.y
+		self.z = self.z - (other.z or 0)
+	end
+	return self
 end
 
-function Point:mul(value)
+function PointMethods:mul(value)
 	if type(value) == "number" then
 		self.x = self.x * value
 		self.y = self.y * value
@@ -72,7 +53,7 @@ function Point:mul(value)
 	return self
 end
 
-function Point:div(value)
+function PointMethods:div(value)
 	if type(value) == "number" then
 		local invVal = 1.0 / value
 		self.x = self.x * invVal
@@ -86,27 +67,27 @@ function Point:div(value)
 	return self
 end
 
-function Point:dot(other)
+function PointMethods:dot(other)
 	return self.x * other.x + self.y * other.y + self.z * (other.z or 0)
 end
 
-function Point:cross(other)
-	return Point(
+function PointMethods:cross(other)
+	return PointCData(
 		self.y * (other.z or 0) - self.z * other.y,
 		self.z * other.x - self.x * (other.z or 0),
 		self.x * other.y - self.y * other.x
 	)
 end
 
-function Point:lengthSq()
+function PointMethods:lengthSq()
 	return self.x * self.x + self.y * self.y + self.z * self.z
 end
 
-function Point:length()
+function PointMethods:length()
 	return math.sqrt(self:lengthSq())
 end
 
-function Point:normalize()
+function PointMethods:normalize()
 	local len = self:length()
 	if len > 0 then
 		local invLen = 1.0 / len
@@ -117,38 +98,30 @@ function Point:normalize()
 	return self
 end
 
-function Point:normalized()
+function PointMethods:normalized()
 	local result = self:clone()
 	return result:normalize()
 end
 
-function Point:distanceSq(other)
+function PointMethods:distanceSq(other)
 	local dx = self.x - other.x
 	local dy = self.y - other.y
 	local dz = self.z - (other.z or 0)
 	return dx * dx + dy * dy + dz * dz
 end
 
-function Point:distance(other)
+function PointMethods:distance(other)
 	return math.sqrt(self:distanceSq(other))
 end
 
-function Point:lerp(other, t)
+function PointMethods:lerp(other, t)
 	self.x = self.x + (other.x - self.x) * t
 	self.y = self.y + (other.y - self.y) * t
 	self.z = self.z + ((other.z or self.z) - self.z) * t
 	return self
 end
 
-function Point.static_lerp(a, b, t)
-	return Point(
-		a.x + (b.x - a.x) * t,
-		a.y + (b.y - a.y) * t,
-		(a.z or 0) + ((b.z or 0) - (a.z or 0)) * t
-	)
-end
-
-function Point:rotate(angle)
+function PointMethods:rotate(angle)
 	local c = math.cos(angle)
 	local s = math.sin(angle)
 	local nx = self.x * c - self.y * s
@@ -157,71 +130,139 @@ function Point:rotate(angle)
 	return self
 end
 
-function Point:set(x, y, z)
+function PointMethods:set(x, y, z)
 	self.x = x or 0
 	self.y = y or 0
 	self.z = z or 0
 	return self
 end
 
-function Point:zero()
+function PointMethods:zero()
 	self.x, self.y, self.z = 0, 0, 0
 	return self
 end
 
-function Point:equals(other, epsilon)
+function PointMethods:equals(other, epsilon)
 	epsilon = epsilon or 1e-10
 	return math.abs(self.x - other.x) < epsilon and
-				 math.abs(self.y - other.y) < epsilon and
-				 math.abs(self.z - (other.z or 0)) < epsilon
+		   math.abs(self.y - other.y) < epsilon and
+		   math.abs(self.z - (other.z or 0)) < epsilon
 end
 
-function Point:__tostring()
-	return string.format("Point(%f, %f, %f)", self.x, self.y, self.z)
-end
+local PointMeta = {
+	__index = function(self, key)
+		if PointMethods[key] then return PointMethods[key] end
 
-Point.__add = Point.static_add
-Point.__sub = Point.static_sub
+		if key == 1 then return self.x
+		elseif key == 2 then return self.y
+		elseif key == 3 then return self.z end
+	end,
 
-function Point.__mul(a, b)
-	if type(a) == "number" then
-		return Point(a * b.x, a * b.y, a * (b.z or 0))
-	elseif type(b) == "number" then
-		return Point(a.x * b, a.y * b, a.z * b)
-	else
-		return Point(a.x * b.x, a.y * b.y, (a.z or 0) * (b.z or 1))
+	__newindex = function(self, key, value)
+		if key == 1 then self.x = value
+		elseif key == 2 then self.y = value
+		elseif key == 3 then self.z = value
+		else
+			error("FFI Struct constraint: Cannot add arbitrary key '" .. tostring(key) .. "' to Point.")
+		end
+	end,
+
+	__add = function(a, b)
+		if type(a) == "number" then
+			return PointCData(a + b.x, a + b.y, a + (b.z or 0))
+		elseif type(b) == "number" then
+			return PointCData(a.x + b, a.y + b, (a.z or 0) + b)
+		else
+			return PointCData(a.x + b.x, a.y + b.y, (a.z or 0) + (b.z or 0))
+		end
+	end,
+
+	__sub = function(a, b)
+		if type(a) == "number" then
+			return PointCData(a - b.x, a - b.y, a - (b.z or 0))
+		elseif type(b) == "number" then
+			return PointCData(a.x - b, a.y - b, (a.z or 0) - b)
+		else
+			return PointCData(a.x - b.x, a.y - b.y, (a.z or 0) - (b.z or 0))
+		end
+	end,
+
+	__mul = function(a, b)
+		if type(a) == "number" then
+			return PointCData(a * b.x, a * b.y, a * (b.z or 0))
+		elseif type(b) == "number" then
+			return PointCData(a.x * b, a.y * b, (a.z or 0) * b)
+		else
+			return PointCData(a.x * b.x, a.y * b.y, (a.z or 0) * (b.z or 1))
+		end
+	end,
+
+	__div = function(a, b)
+		if type(a) == "number" then
+			return PointCData(a / b.x, a / b.y, a / (b.z or 0))
+		elseif type(b) == "number" then
+			local invB = 1.0 / b
+			return PointCData(a.x * invB, a.y * invB, (a.z or 0) * invB)
+		else
+			return PointCData(a.x / b.x, a.y / b.y, (a.z or 0) / (b.z or 1))
+		end
+	end,
+
+	__eq = function(a, b)
+		if not a or not b then return false end
+		if type(a) == "number" or type(b) == "number" then return false end
+
+		return a.x == b.x and a.y == b.y and (a.z or 0) == (b.z or 0)
+	end,
+
+	__unm = function(a)
+		return PointCData(-a.x, -a.y, -(a.z or 0))
+	end,
+
+	__tostring = function(self)
+		return string.format("Point(%f, %f, %f)", self.x, self.y, self.z)
+	end
+}
+
+if Project.flags.jitFFI then
+	ffi.cdef[[ typedef struct { float x, y, z; } FFI_Point3; ]]
+	PointCData = ffi.typeof("FFI_Point3")
+	ffi.metatype(PointCData, PointMeta)
+else
+	PointCData = function(x, y, z)
+		return setmetatable({
+			x = x or 0,
+			y = y or 0,
+			z = z or 0
+		}, PointMeta)
 	end
 end
 
-function Point.__div(a, b)
-	if type(b) == "number" then
-		local invB = 1.0 / b
-		return Point(a.x * invB, a.y * invB, a.z * invB)
-	else
-		return Point(a.x / b.x, a.y / b.y, a.z / (b.z or 1))
+local PointModule = {}
+setmetatable(PointModule, {
+	__call = function(_, x, y, z)
+		return PointCData(x or 0, y or 0, z or 0)
 	end
+})
+
+function PointModule.static_add(a, b)
+	return PointMeta.__add(a, b)
 end
 
-function Point.__eq(a, b)
-	return a.x == b.x and a.y == b.y and (a.z or 0) == (b.z or 0)
+function PointModule.static_sub(a, b)
+	return PointMeta.__sub(a, b)
 end
 
-function Point.__unm(a)
-	return Point(-a.x, -a.y, -a.z)
+function PointModule.static_lerp(a, b, t)
+	return PointCData(
+		a.x + (b.x - a.x) * t,
+		a.y + (b.y - a.y) * t,
+		(a.z or 0) + ((b.z or 0) - (a.z or 0)) * t
+	)
 end
 
-function Point:__index(key)
-	if key == 1 then return self.x
-	elseif key == 2 then return self.y
-	elseif key == 3 then return self.z end
-	return rawget(self, key) or Point[key]
+function PointModule.get(x, y, z)
+	return PointCData(x or 0, y or 0, z or 0)
 end
 
-function Point:__newindex(key, value)
-	if key == 1 then self.x = value
-	elseif key == 2 then self.y = value
-	elseif key == 3 then self.z = value
-	else rawset(self, key, value) end
-end
-
-return Point
+return PointModule

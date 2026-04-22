@@ -10,14 +10,18 @@ function Animation:new(parent, name, frames, framerate, looped)
 	self.offset = Point()
 
 	self.frame = 1
+	self.timer = 0
 	self.finished = false
 	self.paused = false
 	self.reversed = false
+
+	self._justPlayed = false
 	self.__lastFrame = 1
 end
 
 function Animation:play(frame, reversed)
-	self.frame = frame and (frame < 1 and math.random(1, #self.frames)) or 1
+	self.frame = frame and (frame < 1 and math.random(1, #self.frames) or frame) or 1
+	self.timer = 0
 	self.finished = false
 	self.paused = false
 	self.reversed = reversed or false
@@ -45,7 +49,7 @@ function Animation:finish()
 	self:stop()
 	self.frame = self.reversed and 1 or #self.frames
 	if self.parent then
-		self.parent:callback("finish", self.name)
+		self.parent.onFinish:dispatch(self.name)
 	end
 end
 
@@ -66,21 +70,34 @@ end
 
 function Animation:update(dt)
 	if not self.finished and not self.paused then
-		self.frame = self.frame + (dt * (self.reversed and -1 or 1)) * self.framerate
-		if self.reversed then
-			if self.frame < 1 then
-				if self.looped then
-					self.frame = #self.frames
-				else
-					self:finish()
+		self.timer = self.timer + dt
+
+		local delay = 1 / self.framerate
+
+		while self.timer >= delay do
+			self.timer = self.timer - delay
+
+			if self.reversed then
+				self.frame = self.frame - 1
+				if self.frame < 1 then
+					if self.looped then
+						self.frame = #self.frames
+					else
+						self.frame = 1
+						self:finish()
+						break
+					end
 				end
-			end
-		else
-			if self.frame >= #self.frames + 1 then
-				if self.looped then
-					self.frame = 1
-				else
-					self:finish()
+			else
+				self.frame = self.frame + 1
+				if self.frame > #self.frames then
+					if self.looped then
+						self.frame = 1
+					else
+						self.frame = #self.frames
+						self:finish()
+						break
+					end
 				end
 			end
 		end
@@ -89,7 +106,7 @@ function Animation:update(dt)
 		if newFrame ~= self.__lastFrame then
 			self.__lastFrame = newFrame
 			if self.parent then
-				self.parent:callback("frame", newFrame)
+				self.parent.onFrameChange:dispatch(newFrame)
 			end
 		end
 	end

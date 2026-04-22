@@ -6,7 +6,7 @@
   "playData": {
     "difficulties": ["easy", "normal", "hard"],
     "characters": {
-      "player": "pico",
+      "player": "pico-playable",
       "girlfriend": "nene",
       "opponent": "pico",
       "instrumental": "pico",

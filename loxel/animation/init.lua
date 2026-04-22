@@ -135,7 +135,7 @@ end
 
 function AnimationController:play(name, force, frame, reversed)
 	if not self:has(name) then
-		Toast.error("[ANIMATION] no animation data found for " .. name)
+		Logger.log("error", "No animation data found for " .. name, 4)
 		return
 	end
 	local curAnim = self.curAnim
@@ -153,6 +153,7 @@ function AnimationController:play(name, force, frame, reversed)
 		self.name = curAnim.name
 		self.finished = false
 		curAnim:play(frame, reversed or false)
+		self:update(-(1 / self.curAnim.framerate) / 3)
 	end
 end
 
@@ -193,14 +194,7 @@ function AnimationController:update(dt)
 	if self.curAnim then
 		self.curAnim:update(dt)
 		self.finished = self.curAnim.finished
-	end
-end
-
-function AnimationController:callback(type, val)
-	if type == "finish" then
-		self.onFinish:dispatch(val)
-	elseif type == "frame" then
-		self.onFrameChange:dispatch(val)
+		self.frame = self:getCurrentFrame()
 	end
 end
 

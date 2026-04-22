@@ -1,11 +1,11 @@
 {
 	"name": "bold",
-	"offsets": [0, -38],
+	"offsets": [0, 0],
 	"noLower": true,
 
 	"glyphs": {
-		"'": ["-apostraphie-", [0, 48]],
-		"-": ["-dash-", [0, 20]],
+		"'": ["-apostraphie-", [0, -48]],
+		"-": ["-dash-", [0, -20]],
 		"&": ["-andpersand-"],
 		",": ["-comma-"],
 		"“": ["-start quote-"],

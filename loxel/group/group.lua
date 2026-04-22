@@ -67,14 +67,14 @@ function Group:recycle(class, factory, revive)
 	return obj
 end
 
-function Group:_canDraw()
+function Group:canDraw()
 	return self.visible and self.exists and next(self.members)
 end
 
-Group.canDraw = Group._canDraw
+Group.canDraw = Group.canDraw
 
 function Group:draw()
-	if not self:_canDraw() then return end
+	if not self:canDraw() then return end
 	local oldDefaultCameras = Camera.__defaultCameras
 	if self.cameras then Camera.__defaultCameras = self.cameras end
 

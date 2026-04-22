@@ -96,22 +96,8 @@ function Video:__render(camera)
 
 	love.graphics.push("all")
 	self.video:setFilter(mode, mode, anisotropy)
-
-	local x, y, rad, sx, sy, ox, oy = self.x, self.y, math.rad(self.angle),
-		self.scale.x * self.zoom.x, self.scale.y * self.zoom.y,
-		self.origin.x, self.origin.y
-
-	if self.flipX then sx = -sx end
-	if self.flipY then sy = -sy end
-
-	x, y = x + ox - self.offset.x - (camera.scroll.x * self.scrollFactor.x),
-		y + oy - self.offset.y - (camera.scroll.y * self.scrollFactor.y)
-
-	love.graphics.setShader(self.shader); love.graphics.setBlendMode(self.blend)
-	love.graphics.setColor(Color.vec4(self.color, self.alpha))
-
-	love.graphics.draw(self.video, x, y, rad, sx, sy, ox, oy)
-
+	local x, y, rad, sx, sy, ox, oy, kx, ky = self:setupDrawLogic(camera)
+	love.graphics.draw(self.video, x, y, rad, sx, sy, ox, oy, kx, ky)
 	self.video:setFilter(min, mag, anisotropy)
 	love.graphics.pop()
 end

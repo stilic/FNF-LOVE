@@ -35,7 +35,7 @@ function event(data)
 		local daEase = dir and Ease[ease .. dir] or Ease[ease]
 
 		if daEase == nil then
-			print("[CAMERAZOOM EVENT] Invalid ease function: " .. ease)
+			Logger.log("warn", "Invalid ease function: " .. ease)
 			return
 		end
 

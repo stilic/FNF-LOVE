@@ -56,6 +56,7 @@ function LoadState:leave()
 	self.script:call("leave")
 	if self.notCreated then
 		self.script:call("postLeave")
+		self.script:close()
 		return
 	end
 

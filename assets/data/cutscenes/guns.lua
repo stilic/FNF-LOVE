@@ -29,7 +29,11 @@ function create()
 		.. paths.formatToSongPath(PlayState.SONG.song)))
 	tankman:addAnimByPrefix('tightBars', 'TANK TALK 2', 24, false)
 	tankman:play('tightBars', true)
-	state:insert(state:indexOf(state.stage) + 1, tankman)
+	if state.dad then
+		state:insert(state:indexOf(state.dad) + 1, tankman)
+	else
+		state:add(tankman)
+	end
 
 	state.camFollow:set(dadY + 380, dadY + 170)
 end

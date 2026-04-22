@@ -20,10 +20,6 @@ local function stencil()
 	end
 end
 
-local function mod(val, step, tar, max)
-	return val - math[max and "ceil" or "floor"]((val - tar) / step) * step
-end
-
 local Backdrop = Sprite:extend("Backdrop")
 
 local function makeSprite(size, colors)
@@ -54,6 +50,9 @@ function Backdrop:new(texture, axes, sx, sy)
 	Backdrop.super.new(self, 0, 0, texture or Backdrop.defaultSprite)
 	self.antialiasing = not self.__releaseTexture
 
+	self._batch = love.graphics.newSpriteBatch(self.texture, 100)
+	self._ids = {}
+
 	self.axes = axes or "xy"
 	self.spacing = {
 		x = sx or 0,
@@ -68,14 +67,22 @@ end
 function Backdrop:loadTexture(...)
 	Backdrop.super.loadTexture(self, ...)
 	self.__releaseTexture = false
+
+	if self._batch then
+		self._batch:setTexture(self.texture)
+		self._batch:clear()
+		self._ids = {}
+	else
+		self._batch = love.graphics.newSpriteBatch(self.texture, 100)
+		self._ids = {}
+	end
 end
 
-function Backdrop:_getBoundary() return 0, 0, 0, 0, 1, 1, 0, 0 end
-
-function Backdrop:_isOnScreen() return true end
+function Backdrop:getLocalBounds() return 0, 0, 0, 0 end
 function Backdrop:isOnScreen() return true end
 
-local round = math.round
+local ceil, floor = math.ceil, math.floor
+
 function Backdrop:__render(camera)
 	love.graphics.push("all")
 
@@ -86,62 +93,108 @@ function Backdrop:__render(camera)
 	local f = self:getCurrentFrame()
 
 	local x, y, rad, sx, sy, ox, oy, kx, ky = self:setupDrawLogic(camera)
-
 	local spx, spy = self.spacing.x * self.scale.x, self.spacing.y * self.scale.y
 
 	if self.flipX then sx = -sx end
 	if self.flipY then sy = -sy end
 
 	if f then ox, oy = ox + f.offset.x, oy + f.offset.y end
-	if camera.pixelPerfect then ox, oy = round(ox), round(oy) end
 
 	local fw, fh = self:getFrameDimensions()
-	fw, fh = fw * math.abs(sx), fh * math.abs(sy)
+	local tileW = (fw + spx) * math.abs(sx)
+	local tileH = (fh + spy) * math.abs(sy)
 
-	local tsx, tsy = spx + fw, spy + fh
-	local tx, ty, hasX, hasY = 1, 1, self.axes:find("x"), self.axes:find("y")
+	local zoomX = (type(camera.zoom) == "number" and camera.zoom or camera.zoom.x) or 1
+	local zoomY = (type(camera.zoom) == "number" and camera.zoom or camera.zoom.y) or 1
 
-	local zoom = camera.zoom or 1
-	
-	if hasX then
-		local l, r = mod(x + fw, tsx, 0) - fw, mod(x, tsx, camera.width / zoom, true) + tsx
-		tx, x = math.ceil((r - l) / tsx), mod(x + fw, fw + spx, 0) - fw
+	local viewW = camera.width / zoomX
+	local viewH = camera.height / zoomY
+
+	local viewLeft = (camera.width / 2) - (viewW / 2)
+	local viewTop  = (camera.height / 2) - (viewH / 2)
+
+	local viewRight = viewLeft + viewW
+	local viewBottom = viewTop + viewH
+
+	local i_min, i_max = 0, 0
+	local j_min, j_max = 0, 0
+
+	local ox_scaled = ox * math.abs(sx)
+	local oy_scaled = oy * math.abs(sy)
+	local left_margin = (fw - ox) * math.abs(sx)
+	local top_margin = (fh - oy) * math.abs(sy)
+
+	if self.axes:find("x") then
+		i_min = floor((viewLeft - x - left_margin) / tileW) + 1
+		i_max = ceil((viewRight - x + ox_scaled) / tileW) - 1
 	end
-	
-	if hasY then
-		local t, b = mod(y + fh, tsy, 0) - fh, mod(y, tsy, camera.height / zoom, true) + tsy
-		ty, y = math.ceil((b - t) / tsy), mod(y + fh, fh + spy, 0) - fh
+
+	if self.axes:find("y") then
+		j_min = floor((viewTop - y - top_margin) / tileH) + 1
+		j_max = ceil((viewBottom - y + oy_scaled) / tileH) - 1
 	end
 
 	love.graphics.shear(kx, ky)
 
-	for tlx = 0, tx do
-		for tly = 0, ty do
-			local xx, yy = x + tsx * tlx, y + tsy * tly
-			if camera.pixelPerfect then xx, yy = round(xx), round(yy) end
+	if self.clipRect then
+		for i = i_min, i_max do
+			for j = j_min, j_max do
+				local xx = x + (i * tileW)
+				local yy = y + (j * tileH)
 
-			if self.clipRect then
+				if camera.pixelPerfect then xx, yy = floor(xx), floor(yy) end
+
 				stencilSprite, stencilX, stencilY = self, xx, yy
 				love.graphics.stencil(stencil, "replace", 1, false)
 				love.graphics.setStencilTest("greater", 0)
-			end
 
-			if f then
-				love.graphics.draw(self.texture, f.quad, xx, yy, rad, sx, sy, ox, oy)
-			else
-				love.graphics.draw(self.texture, xx, yy, rad, sx, sy, ox, oy)
+				if f then
+					love.graphics.draw(self.texture, f.quad, xx, yy, rad, sx, sy, ox, oy)
+				else
+					love.graphics.draw(self.texture, xx, yy, rad, sx, sy, ox, oy)
+				end
 			end
 		end
+		love.graphics.setStencilTest()
+	else
+		local q = f and f.quad or nil
+		local idIndex = 1
+
+		for i = i_min, i_max do
+			for j = j_min, j_max do
+				local xx = x + (i * tileW)
+				local yy = y + (j * tileH)
+
+				if camera.pixelPerfect then xx, yy = floor(xx), floor(yy) end
+
+				local cid = self._ids[idIndex]
+				if cid then
+					if q then
+						self._batch:set(cid, q, xx, yy, rad, sx, sy, ox, oy, kx, ky)
+					else
+						self._batch:set(cid, xx, yy, rad, sx, sy, ox, oy, kx, ky)
+					end
+				else
+					if q then
+						self._ids[idIndex] = self._batch:add(q, xx, yy, rad, sx, sy, ox, oy, kx, ky)
+					else
+						self._ids[idIndex] = self._batch:add(xx, yy, rad, sx, sy, ox, oy, kx, ky)
+					end
+				end
+				idIndex = idIndex + 1
+			end
+		end
+		for k = idIndex, #self._ids do self._batch:set(self._ids[k], 0, 0, 0, 0, 0) end
+		love.graphics.draw(self._batch)
 	end
 
-	love.graphics.setStencilTest()
 	self.texture:setFilter(min, mag, anisotropy)
-
 	love.graphics.pop()
 end
 
 function Backdrop:destroy()
 	Backdrop.super.destroy(self)
+	if self._batch then self._batch:release() end
 	if self.__releaseTexture then
 		self.texture:release()
 	end

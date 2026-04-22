@@ -7,87 +7,116 @@
 
 ---@class Classic
 ---@operator call:fun(...:any)
-local Classic = {__class = "Classic"}
+local type = type
+local rawget = rawget
+local rawset = rawset
+local getmetatable = getmetatable
+local setmetatable = setmetatable
+local pairs = pairs
+local select = select
+local tostring = tostring
+local byte = string.byte
+
+local Classic = {
+	__class = "Classic"
+}
 Classic.__index = Classic
 
--- !! index is laggy, so i removed it
-
-function Classic:__newindex(k, v)
-	local obj = rawget(self, "__class") == nil
-	local src = obj and getmetatable(self) or self
-
-	local set = rawget(src, "set_" .. k)
-	if not set then
-		local p = src.super
-		while p and not set do
-			set = rawget(p, "set_" .. k); p = p.super
-		end
-	end
-	if set then
-		set(obj and self or v, obj and v or nil)
-	else rawset(self, k, v) end
-end
-
----base function that can be called with Classic() or Classic:new()
 function Classic:new() end
 
----returns the cloned instance
 function Classic:clone()
-	local meta, super, index = getmetatable(self), self.super, self.__index
+	local meta = getmetatable(self)
+	local super = rawget(self, "super")
+	local index = rawget(self, "__index")
+
 	setmetatable(self, nil)
-	self.__index, self.super = nil
+	self.__index = nil
+	self.super = nil
 
 	local clone = table.clone(self)
-	setmetatable(self, meta); setmetatable(clone, meta)
-	clone.__index, self.__index, clone.super, self.super = index, index, super, super
+
+	setmetatable(self, meta)
+	setmetatable(clone, meta)
+
+	clone.__index = index
+	self.__index = index
+	clone.super = super
+	self.super = super
+
 	return clone
 end
 
----returns the class with the tables functions and variables
----@return Classic
-function Classic:extend(type)
+function Classic:extend(type_name, use_getset)
 	local cls = {}
 
 	for k, v in pairs(self) do
-		if k:sub(1, 2) == "__" then cls[k] = v end
+		if type(k) == "string" and byte(k, 1) == 95 and byte(k, 2) == 95 then
+			if k ~= "__getters" and k ~= "__setters" and k ~= "__newindex" then
+				cls[k] = v
+			end
+		end
 	end
 
-	cls.__class = type or "Unknown"
-	cls.__index = cls
+	cls.__class = type_name or "Unknown"
 	cls.super = self
-	setmetatable(cls, self)
 
-	return cls
+	if use_getset then
+		cls.__getters = setmetatable({}, {__index = self.__getters})
+		cls.__setters = setmetatable({}, {__index = self.__setters})
+
+		cls.__index = function(instance, key)
+			local getter = cls.__getters[key]
+			if getter then return getter(instance) end
+			return cls[key]
+		end
+
+		cls.__newindex = function(self_inst, k, v)
+			local is_inst = rawget(self_inst, "__class") == nil
+			local src = is_inst and getmetatable(self_inst) or self_inst
+
+			-- Fast lookup in the registry
+			local setter = src.__setters and src.__setters[k]
+
+			if setter then
+				-- Direct call: No string concatenation, no while-loop
+				if is_inst then setter(self_inst, v) else setter(v, nil) end
+			else
+				rawset(self_inst, k, v)
+			end
+		end
+	else
+		cls.__index = cls
+		cls.__newindex = rawset
+	end
+
+	return setmetatable(cls, self)
 end
 
----implements functions to the class
----@param ... Classic
 function Classic:implement(...)
-	for _, cls in pairs({...}) do
+	for i = 1, select("#", ...) do
+		local cls = select(i, ...)
 		for k, v in pairs(cls) do
-			if self[k] == nil and type(v) == "function" and k ~= "new" and k:sub(1, 2) ~= "__" then
-				self[k] = v
+			if self[k] == nil and type(v) == "function" and k ~= "new" then
+				if not (type(k) == "string" and byte(k, 1) == 95 and byte(k, 2) == 95) then
+					self[k] = v
+				end
 			end
 		end
 	end
 end
 
----excludes functions from the class
----@param ... string
 function Classic:exclude(...)
 	for i = 1, select("#", ...) do
 		self[select(i, ...)] = nil
 	end
 end
 
----check if its the same type or the parent types
----@param T any
 function Classic:is(T)
 	local mt = self
-	repeat
+	while mt do
 		mt = getmetatable(mt)
 		if mt == T then return true end
-	until mt == nil
+	end
 	return false
 end
 
@@ -95,9 +124,6 @@ function Classic:__tostring()
 	return self.__class
 end
 
----calls the new function with args
----@param ... any
----@return any
 function Classic:__call(...)
 	local obj = setmetatable({}, self)
 	obj:new(...)

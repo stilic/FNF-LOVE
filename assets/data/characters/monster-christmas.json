@@ -1,22 +1,66 @@
 {
-	"animations": [
-		["idle", "monster idle", [], 24, false, [1, 0]],
-		["singUP", "monster up note", [], 24, false, [-20, 50]],
-		["singLEFT", "Monster left note", [], 24, false, [-30, 0]],
-		["singRIGHT", "Monster Right note", [], 24, false, [-51, 0]],
-		["singDOWN", "monster down", [], 24, false, [-40, -94]],
-		["singUP-loop", "monster up note", [21, 22, 23], 24, true, [-20, 50]],
-		["singDOWN-loop", "monster down", [27, 28, 29], 24, true, [-40, -94]],
-		["singRIGHT-loop", "Monster Right note", [12, 13, 14], 24, true, [-51, 0]],
-		["singLEFT-loop", "Monster left note", [17, 18, 19], 24, true, [-30, 0]],
-		["idle-loop", "monster idle", [12, 13, 14], 24, true, [1, 0]]
-	],
-	"position": [0, 130],
-	"camera_points": [0, 0],
-	"flip_x": false,
-	"icon": "monster",
-	"sprite": "characters/monsterChristmas",
-	"antialiasing": true,
-	"sing_duration": 8,
-	"scale": 1
+  "version": "1.0.0",
+  "name": "Monster (Christmas)",
+  "assetPath": "characters/MonsterChristmas",
+  "renderType": "animateatlas",
+  "healthIcon": {
+    "id": "monster"
+  },
+  "animations": [
+    {
+      "name": "idle",
+      "prefix": "monster idle"
+    },
+    {
+      "name": "idle-hold",
+      "prefix": "monster idle",
+      "looped": true,
+      "frameIndices": [12, 13, 14]
+    },
+    {
+      "name": "singLEFT",
+      "prefix": "Monster left note"
+    },
+    {
+      "name": "singLEFT-hold",
+      "prefix": "Monster left note",
+      "looped": true,
+      "frameIndices": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    },
+    {
+      "name": "singDOWN",
+      "prefix": "monster down"
+    },
+    {
+      "name": "singDOWN-hold",
+      "prefix": "monster down",
+      "looped": true,
+      "frameIndices": [
+        7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+        26, 27, 28, 29
+      ]
+    },
+    {
+      "name": "singUP",
+      "prefix": "monster up note"
+    },
+    {
+      "name": "singUP-hold",
+      "prefix": "monster up note",
+      "looped": true,
+      "frameIndices": [
+        8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23
+      ]
+    },
+    {
+      "name": "singRIGHT",
+      "prefix": "Monster Right note"
+    },
+    {
+      "name": "singRIGHT-hold",
+      "prefix": "Monster Right note",
+      "looped": true,
+      "frameIndices": [6, 7, 8, 9, 10, 11, 12, 13, 14]
+    }
+  ]
 }

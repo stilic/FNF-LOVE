@@ -23,8 +23,8 @@ function ChartingState:enter()
 		playerTick = true,
 		opponentTick = true
 	}
-	if game.save.data.chartingData then
-		--self.saveData = game.save.data.chartingData
+	if ClientPrefs.save.data.chartingData then
+		--self.saveData = ClientPrefs.save.data.chartingData
 	end
 
 	self.metronome = self.saveData.metronome
@@ -530,7 +530,7 @@ function ChartingState:add_UI_Charting()
 	metronome.callback = function()
 		self.metronome = metronome.checked
 		self.saveData.metronome = self.metronome
-		game.save.data.chartingData = self.saveData
+		ClientPrefs.save.data.chartingData = self.saveData
 	end
 
 	local player_hitsound = ui.UICheckbox(10, 50, 20)
@@ -538,7 +538,7 @@ function ChartingState:add_UI_Charting()
 	player_hitsound.callback = function()
 		self.playerTick = player_hitsound.checked
 		self.saveData.playerTick = self.playerTick
-		game.save.data.chartingData = self.saveData
+		ClientPrefs.save.data.chartingData = self.saveData
 	end
 
 	local opponent_hitsound = ui.UICheckbox(10, 80, 20)
@@ -546,7 +546,7 @@ function ChartingState:add_UI_Charting()
 	opponent_hitsound.callback = function()
 		self.opponentTick = opponent_hitsound.checked
 		self.saveData.opponentTick = self.opponentTick
-		game.save.data.chartingData = self.saveData
+		ClientPrefs.save.data.chartingData = self.saveData
 	end
 
 	local mute_inst = ui.UICheckbox(110, 140, 20)
@@ -1337,7 +1337,7 @@ function ChartingState:focus(f) self.focused = f end
 function ChartingState:leave()
 	love.mouse.setVisible(false)
 
-	game.save.data.chartingData = self.saveData
+	ClientPrefs.save.data.chartingData = self.saveData
 	ChartingState.conductor = nil
 
 	Note.chartingMode = false

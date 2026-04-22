@@ -16,7 +16,7 @@ local function getImage(path)
 	if obj then return obj end
 
 	if paths.exists(path, "file") then
-		obj = love.graphics.newImage(path)
+		obj = love.graphics.newImage(path, {fullQuality = true})
 		paths.images[path] = obj
 		return obj
 	end
@@ -29,9 +29,9 @@ function ModdingUtil.getBanner(root, name)
 end
 
 function ModdingUtil.getIcon(root, name)
-	local obj = getImage(root .. "/" .. name .. "/icon.png")
+	local obj = getImage(root .. "/" .. name .. "/icon.png", true)
 	if obj then return obj end
-	return paths.getImage("menus/modding/icon")
+	return paths.getImage("menus/modding/icon", true)
 end
 
 function ModdingUtil.getMeta(root, name)

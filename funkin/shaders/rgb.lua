@@ -28,15 +28,17 @@ RGBShader.actorCode = [[
 ]]
 
 function RGBShader.set(shader, r, g, b)
-	shader:send("r", r); shader:send("g", g); shader:send("b", b)
+	shader:send("r", {r[1], r[2], r[3]})
+	shader:send("g", {g[1], g[2], g[3]})
+	shader:send("b", {b[1], b[2], b[3]})
 	return shader
 end
 
 function RGBShader.getKey(r, g, b)
-	return
-		table.concat(r) .. "_" ..
-		table.concat(g) .. "_" ..
-		table.concat(b)
+	return string.format("%.3f%.3f%.3f_%.3f%.3f%.3f_%.3f%.3f%.3f",
+		r[1], r[2], r[3],
+		g[1], g[2], g[3],
+		b[1], b[2], b[3])
 end
 
 function RGBShader.create(r, g, b, unique)

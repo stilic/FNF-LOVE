@@ -1,85 +1,89 @@
 local codename = {name = "Codename"}
+local NoteBuffer = require "funkin.backend.notebuffer"
 
-local function getFromMeta(data, tbl)
-	Parser.pset(tbl, "song", data.displayName or data.name)
-	Parser.pset(tbl, "skin", data.skin)
-
-	Parser.pset(tbl, "difficulties", data.difficulties)
-	Parser.pset(tbl, "bpm", data.bpm)
+local function remapEvent(e)
+	if e.name ~= "Camera Movement" then return e end
+	local val = e.params[1]
+	return {
+		name   = "FocusCamera",
+		time   = e.time,
+		params = val ~= 2 and 1 - val or val
+	}
 end
 
-local function getStuff(data, eventData, chart)
-	local dad, bf, events =
-		{}, {}, {}
-
-	if eventData then
-		for i, e in ipairs(eventData.events) do
-			local eevent, eparams
-			if e.name == "Camera Movement" then
-				e.name = "FocusCamera"
-				local val = e.params[1]
-				e.params = val ~= 2 and 1 - val or val
-			end
-
-			table.insert(events, {
-				t = e.time,
-				e = e.name,
-				v = e.params,
-				codename = true
-			})
-		end
+local function parseEvents(eventData)
+	if not eventData then return {} end
+	local events = {}
+	for _, e in ipairs(eventData.events) do
+		local mapped = remapEvent(e)
+		events[#events + 1] = {
+			t        = mapped.time,
+			e        = mapped.name,
+			v        = mapped.params,
+			codename = true
+		}
 	end
-
-	for _, s in ipairs(data.strumLines) do
-		local toAdd, gfNotes = bf
-		if s.position == "dad" then
-			toAdd = dad
-			gfNotes = false
-			Parser.pset(chart, "player2", s.characters[1])
-		elseif s.position == "girlfriend" then
-			toAdd = dad
-			gfNotes = true
-			Parser.pset(chart, "gfVersion", s.characters[1])
-		elseif s.position == "boyfriend" then
-			toAdd = bf
-			gfNotes = false
-			Parser.pset(chart, "player1", s.characters[1])
-		end
-
-		for _, n in ipairs(s.notes) do
-			local newNote = {
-				t = n.time,
-				d = n.id % 4,
-				l = n.sLen,
-				k = n.type,
-				gf = gfNotes
-			}
-			table.insert(toAdd, newNote)
-		end
-	end
-
-	return {enemy = dad, player = bf}, events
+	return events
 end
 
-function codename.parse(data, events, meta)
-	local chart = Parser.getDummyChart(nil, true)
+local STRUM_POSITIONS = {
+	dad        = { buf = "enemy",  gf = false },
+	girlfriend = { buf = "enemy",  gf = true  },
+	boyfriend  = { buf = "player", gf = false },
+}
 
-	if meta then getFromMeta(meta, chart) end
+local function parseStrumLines(strumLines, chart)
+	local enemy  = NoteBuffer()
+	local player = NoteBuffer()
+	local bufs   = { enemy = enemy, player = player }
 
+	for _, strum in ipairs(strumLines) do
+		local info = STRUM_POSITIONS[strum.position]
+		if not info then goto nextStrum end
+
+		if strum.position == "dad"        then Parser.pset(chart, "player2",    strum.characters[1]) end
+		if strum.position == "girlfriend" then Parser.pset(chart, "gfVersion",  strum.characters[1]) end
+		if strum.position == "boyfriend"  then Parser.pset(chart, "player1",    strum.characters[1]) end
+
+		local buf   = bufs[info.buf]
+		local isGf  = info.gf
+
+		for _, n in ipairs(strum.notes) do
+			buf:push(n.time, n.id % 4, n.sLen, n.type, isGf)
+		end
+
+		::nextStrum::
+	end
+
+	enemy:shrink()
+	player:shrink()
+
+	return { enemy = enemy, player = player }
+end
+
+local function parseTimeChanges(meta, eventData)
+	local timeChanges = { Song.newTimeChange(0, meta.bpm or 100) }
+	if not eventData then return timeChanges end
+
+	for _, e in ipairs(eventData.events) do
+		if e.name == "BPM Change" then
+			timeChanges[#timeChanges + 1] = Song.newTimeChange(e.time, e.params[1])
+		end
+	end
+	return timeChanges
+end
+
+function codename.parse(song, data, events)
+	local chart = Song.newChart(nil, true)
+
+	Parser.pset(chart, "song",  song.meta.displayName or song.meta.name)
+	Parser.pset(chart, "skin",  song.meta.skin)
 	Parser.pset(chart, "stage", data.stage)
 	Parser.pset(chart, "speed", data.scrollSpeed)
 
-	local timeChanges = {}
-	if events then
-		for _, e in ipairs(events) do
-			if e.name == "BPM Change" then
-				table.insert(timeChanges, Parser.newTimeChange(e.time, e.params[1]))
-			end
-		end
-	end
-	chart.timeChanges = timeChanges
-
-	chart.notes, chart.events = getStuff(data, events, chart)
+	chart.timeChanges = parseTimeChanges(song.meta, events)
+	chart.events      = parseEvents(events)
+	chart.notes       = parseStrumLines(data.strumLines, chart)
 
 	return chart
 end

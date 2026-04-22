@@ -19,16 +19,8 @@ function MainMenuState:enter()
 		self.script:call("postCreate")
 		return
 	end
-	MainMenuState.super.enter(self)
-
-	-- Update Presence
-	if Discord then
-		Discord.changePresence({details = "In the Menus", state = "Main Menu"})
-	end
 
 	self.menuItems = {'storymode', 'freeplay', 'credits', 'options', 'donate'}
-
-	self.selectedSomethin = false
 
 	game.camera.target = {x = 0, y = 0}
 	self.camFollow = {x = 0, y = 0}
@@ -95,6 +87,12 @@ function MainMenuState:enter()
 	self.menuList:changeSelection()
 	self.menuList:updatePositions(0, 0)
 
+	if Discord then
+		Discord.changePresence({details = "In the Menus", state = "Main Menu"})
+	end
+
+	MainMenuState.super.enter(self)
+
 	self.script:call("postCreate")
 end
 
@@ -107,13 +105,15 @@ function MainMenuState:update(dt)
 		return
 	end
 
-	if not self.selectedSomethin then
+	if not self.menuList.lock then
 		if controls:pressed("back") then
+			self.menuList.lock = true
 			game.sound.play(paths.getSound('cancelMenu'))
 			game.switchState(TitleState())
 		end
 
 		if controls:pressed("pick_mods") then
+			self.menuList.lock = true
 			game.switchState(ModsState())
 		end
 	end
@@ -134,7 +134,8 @@ local triggerChoices = {
 	end},
 	options = {false, function(self)
 		if self.buttons then self:remove(self.buttons) end
-		self.optionsUI = self.optionsUI or Options(true, function()
+		if self.optionsUI then self.optionsUI:destroy() end
+		self.optionsUI = OptionsSubstate(true, function()
 			self.menuList.lock = false
 
 			if Discord then
@@ -143,9 +144,7 @@ local triggerChoices = {
 			if self.buttons then self:add(self.buttons) end
 		end)
 		self.optionsUI.applySettings = bind(self, self.onSettingChange)
-		self.optionsUI.scrollFactor:set()
-		self.optionsUI:screenCenter()
-		self:add(self.optionsUI)
+		self:openSubstate(self.optionsUI)
 		return false
 	end},
 	donate = {false, function(self)
@@ -161,33 +160,27 @@ function MainMenuState:onSettingChange(setting, option)
 	end
 end
 
-function MainMenuState:openEditorMenu()
-	self.selectedSomethin = true
-	self.editorUI = self.editorUI or EditorMenu(function()
-		self.selectedSomethin = false
-	end)
-	self.editorUI.scrollFactor:set()
-	self.editorUI:screenCenter()
-	self:add(self.editorUI)
-end
-
 function MainMenuState:enterSelection(choice)
 	local switch = triggerChoices[choice]
-	self.selectedSomethin = true
+	local flash = ClientPrefs.data.flashingLights
 
-	game.sound.play(paths.getSound('confirmMenu'))
+	util.playSfx(paths.getSound('confirmMenu'))
 	local flicker = Flicker(self.menuBg, switch[1] and 1.1 or 1, 0.15, true)
+	if not flash then self.menuBg:loadTexture(self.menuMagenta) end
 	local magenta = false
 	flicker.onFlicker = function()
+		if not self.menuBg.exists or not flash then return end
 		magenta = not magenta
 		self.menuBg:loadTexture(magenta and self.menuMagenta or self.menuYellow)
 	end
 	flicker.completionCallback = function()
+		if not self.menuBg.exists then return end
 		self.menuBg:loadTexture(self.menuYellow)
 	end
 
 	local selectedItem = self.menuList.members[self.menuList.curSelected]
-	Flicker(selectedItem, 1, 0.05, not switch[1], false, function()
+	local time = flash and 0.05 or 0.2
+	Flicker(selectedItem, 1, time, not switch[1], false, function()
 		self.selectedSomethin = not switch[2](self)
 	end)
 	for _, spr in ipairs(self.menuList.members) do
@@ -206,6 +199,7 @@ function MainMenuState:leave()
 	self.script:call("leave")
 	if self.notCreated then
 		self.script:call("postLeave")
+		self.script:close()
 		return
 	end
 

@@ -11,10 +11,7 @@ if love.system.getOS() == "Windows" then
 	end
 end
 
-local s, Https = pcall(require, "https")
-if not s then
-	Https = require "lib.https"
-end
+Https = require "lib.https"
 
 paths = require "funkin.backend.paths"
 util = require "funkin.util"
@@ -57,14 +54,11 @@ AtlasText = require "funkin.ui.atlastext"
 SpriteButton = require "funkin.ui.spritebutton"
 Marquee = require "funkin.ui.marquee"
 MenuList = require "funkin.ui.menulist"
-Options = require "funkin.ui.options"
-Stickers = require "funkin.ui.stickers"
 LoadScreen = require "funkin.ui.loadscreen"
 
 StatsCounter = require "funkin.ui.statscounter"
 
 LoadState = require 'funkin.states.load'
-CalibrationState = require 'funkin.states.calibration'
 CreditsState = require "funkin.states.credits"
 TitleState = require "funkin.states.title"
 MainMenuState = require "funkin.states.mainmenu"
@@ -75,6 +69,8 @@ PlayState = require "funkin.states.play"
 
 PauseSubstate = require "funkin.substates.pause"
 GameOverSubstate = require "funkin.substates.gameover"
+StickerSubstate = require "funkin.substates.stickers"
+OptionsSubstate = require "funkin.substates.options"
 
 EditorMenu = require "funkin.ui.editor.editormenu"
 CutsceneState = require "funkin.states.editors.cutscene"
@@ -85,37 +81,19 @@ ChartingNote = require "funkin.ui.editor.charting.chartingnote"
 Shader = require "funkin.shaders"
 RGBShader = require "funkin.shaders.rgb"
 Video = require "funkin.backend.video"
-
+local res, isMobile
 local TransitionFade = loxreq "transition.transitionfade"
 
 function funkin.load()
-	local res, isMobile = math.abs(ClientPrefs.data.resolution),
-		love.system.getDevice() == "Mobile"
+	local prefs = ClientPrefs.data
+
+	res, isMobile = math.abs(prefs.resolution), love.system.getDevice() == "Mobile"
 	Camera.defaultResolution = res
 
-	love.window.setTitle(Project.title)
-	love.window.setIcon(love.image.newImageData(Project.icon))
+	funkin.setEnvironment()
 
-	love.window.setMode(Project.width * res, Project.height * res, {
-		fullscreen = isMobile or ClientPrefs.data.fullscreen,
-		resizable = not isMobile,
-		usedpiscale = false
-	})
-
-	if Project.adaptableWidth then
-		local sw, sh = love.graphics.getDimensions()
-		local ratio = sw / sh
-		Project.width = math.floor(Project.height * ratio)
-		game.width = Project.width
-		love.window.updateMode(Project.width, Project.height, {
-			fullscreen = isMobile or ClientPrefs.data.fullscreen,
-			resizable = not isMobile,
-			usedpiscale = false
-		})
-	end
-
-	if game.save.data.prefs then
-		love.FPScap = ClientPrefs.data.fps
+	if ClientPrefs.save.data.prefs then
+		love.FPScap = ClientPrefs.data.fps or 60
 		love.vsync = ClientPrefs.data.vsync
 		love.autoPause = ClientPrefs.data.autoPause
 	else
@@ -127,7 +105,6 @@ function funkin.load()
 
 	Object.defaultAntialiasing = ClientPrefs.data.antialiasing
 
-	Toast.showPrints = ClientPrefs.data.showToastPrints
 	Toast.showErrors = ClientPrefs.data.showToastErrors
 	Toast.showDeprecations = ClientPrefs.data.showToastDeprecations
 
@@ -142,6 +119,8 @@ function funkin.load()
 		love.graphics.setBackgroundColor(Project.bgColor)
 	end
 
+	paths.initCompressedSupport()
+
 	Mods.reload()
 	Addons.reload()
 	Highscore.load()
@@ -152,7 +131,7 @@ function funkin.load()
 
 	game.onPreStateEnter = function(state)
 		-- GlobalScripts.call("preStateEnter", state)
-		if paths and not game.getState().persistCache and
+		if paths and game.getState() and not game.getState().persistCache and
 			getmetatable(state) ~= getmetatable(game.getState()) then
 			paths.clearCache()
 			Shader.clear()
@@ -168,10 +147,11 @@ function funkin.load()
 	if ClientPrefs.data.resolution == -1 then
 		Camera.defaultResolution = love.graphics.getFixedScale()
 		ClientPrefs.data.resolution = Camera.defaultResolution
-		for _, camera in ipairs(game.cameras.list) do
+		for _, camera in pairs(game.cameras.list) do
 			if camera then camera:resize(camera.width, camera.height) end
 		end
 	end
+	love.window.setVSync(love.vsync and 1 or 0)
 
 	game.statsCounter = StatsCounter(18, 18,
 		love.graphics.newFont('assets/fonts/consolas.ttf', 14),
@@ -182,7 +162,7 @@ function funkin.load()
 	game.statsCounter.showDraws = ClientPrefs.data.showDraws
 	game:add(game.statsCounter)
 
-	AtlasText.defaultFont = AtlasText.getFont("default", 1)
+	AtlasText.defaultFont = AtlasText.getFont("default-white", 1)
 
 	if Discord then Discord.init() end
 
@@ -212,15 +192,85 @@ end
 
 function funkin.quit()
 	ClientPrefs.saveData()
+	paths.async.crashstop()
 	if Discord then Discord.shutdown() end
+	FFT.close()
 end
 
 local function error_printer(msg, layer)
-	print((debug.traceback("Error: " .. tostring(msg), 1 + (layer or 1)):gsub("\n[^\n]+$", "")))
+	ogprint((debug.traceback("Error: " .. tostring(msg), 1 + (layer or 1)):gsub("\n[^\n]+$", "")))
 end
 
+function funkin.heartbeat()
+	Discord.heartbeat()
+end
+
+local function rmerge(a, b)
+	if a and b then
+		for i, v in pairs(b) do
+			if type(v) == "table" and type(a[i]) == "table" then rmerge(a[i], v) else a[i] = v end
+		end
+	end
+end
+
+local appdata = {
+	appName = Project.title,
+	appIcon = Project.icon,
+	window = {
+		width = Project.width,
+		height = Project.height,
+		dynamicWidth = Project.adaptableWidth,
+		color = {0, 0, 0, 1}
+	},
+	discord = {
+		id = "1098761843956273304",
+		assets = {
+			large_image = "icon",
+			large_text = "FNF LÖVE"
+		}
+	}
+}
+
+function funkin.setEnvironment(settings)
+	local res = math.abs(ClientPrefs.data.resolution)
+	local data = table.clone(appdata)
+	if settings then rmerge(data, settings) end
+
+	love.window.setTitle(data.appName)
+	love.window.setIcon(love.image.newImageData(data.appIcon))
+
+	game.width, game.height = data.window.width, data.window.height
+	love.window.updateMode(data.window.width * res, data.window.height * res, {
+		fullscreen = isMobile or ClientPrefs.data.fullscreen,
+		resizable = not isMobile,
+		usedpiscale = false
+	})
+	if Project.adaptableWidth then
+		local w, h = love.graphics.getDimensions()
+		local screenRatio = w / h
+		local gameRatio = game.width / game.height
+
+		if screenRatio > gameRatio then
+			game.width = math.floor(game.height * screenRatio)
+			for _, camera in pairs(game.cameras.list) do
+				camera:resize(game.width, game.height)
+			end
+		end
+	end
+	Transition.width = game.width
+
+	love.graphics.setBackgroundColor(data.window.color[1], data.window.color[2], data.window.color[3])
+
+	Discord.clientID = data.discord.id
+	Discord.options.assets = data.discord.assets
+	Discord.restart()
+end
+util.setEnvironment = funkin.setEnvironment
+
 function funkin.throwError(msg)
-	paths.async.stop()
+	paths.async.crashstop()
+	if Discord then Discord.shutdown() end
+	FFT.close()
 	pcall(love.errorhandler_quit)
 
 	msg = tostring(msg)
@@ -229,7 +279,7 @@ function funkin.throwError(msg)
 	if not love.window or not love.graphics or not love.event then return end
 
 	if not love.window.isOpen() then
-		local success, status = pcall(love.window.setMode, 800, 600)
+		local success, status = pcall(love.window.setMode, 800, 600, {fullscreen = false})
 		if not success or not status then return end
 	end
 
@@ -281,8 +331,18 @@ function funkin.throwError(msg)
 	if love.audio then love.audio.stop() end
 	if love.handlers then love.handlers = nil end
 
+	collectgarbage("collect")
 	collectgarbage()
 	collectgarbage()
+	local ffi = require "ffi"
+	if game.system.os == "Linux" then
+		pcall(function() ffi.cdef[[void malloc_trim(size_t);]] ffi.C.malloc_trim(0) end)
+	elseif game.system.os == "Windows" then
+		pcall(function()
+			ffi.cdef[[void* GetCurrentProcess(); int EmptyWorkingSet(void*);]]
+			ffi.load("psapi").EmptyWorkingSet(ffi.C.GetCurrentProcess())
+		end)
+	end
 
 	local interactTxt = ""
 	if love.system then

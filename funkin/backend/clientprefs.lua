@@ -32,7 +32,7 @@ ClientPrefs.data = {
 	sfxVolume = 80,
 
 	-- display
-	fps = 0,
+	fps = 60,
 	antialiasing = true,
 	lowQuality = false,
 	shader = true,
@@ -64,14 +64,14 @@ ClientPrefs.controls = {
 	ui_up = {"key:w", "key:up"},
 	ui_right = {"key:d", "key:right"},
 
-	volume_down = {"key:-", "key:kp-"},
-	volume_up = {"key:+", "key:kp+", "key:="},
-	volume_mute = {"key:0", "key:kp0"},
+	volume_down = {"key:-", "key:f7"},
+	volume_up = {"key:+", "key:f8"},
+	volume_mute = {"key:0", "key:f6"},
 
 	reset = {"key:r"},
-	accept = {"key:z", "key:space", "key:return"},
-	back = {"key:x", "key:backspace", "key:escape"},
-	pause = {"key:p", "key:return", "key:escape"},
+	accept = {"key:space", "key:return"},
+	back = {"key:backspace", "key:escape"},
+	pause = {"key:return", "key:escape"},
 
 	fullscreen = {"key:f11"},
 	pick_mods = {"key:tab"},
@@ -83,15 +83,16 @@ ClientPrefs.controls = {
 function ClientPrefs.saveData()
 	ClientPrefs.data.fullscreen = love.window.getFullscreen()
 
-	game.save.data.prefs = ClientPrefs.data
-	game.save.data.controls = ClientPrefs.controls
+	ClientPrefs.save.data.prefs = ClientPrefs.data
+	ClientPrefs.save.data.controls = ClientPrefs.controls
 
-	game.save.bind("funkin")
+	ClientPrefs.save:save()
 end
 
 -- load save on start
-game.save.init("funkin")
-pcall(table.merge, ClientPrefs.data, game.save.data.prefs)
-pcall(table.merge, ClientPrefs.controls, game.save.data.controls)
+ClientPrefs.save = game.save("preferences")
+ClientPrefs.save:load()
+pcall(table.merge, ClientPrefs.data, ClientPrefs.save.data.prefs)
+pcall(table.merge, ClientPrefs.controls, ClientPrefs.save.data.controls)
 
 return ClientPrefs
