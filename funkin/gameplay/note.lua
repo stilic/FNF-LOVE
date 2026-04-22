@@ -39,7 +39,7 @@ function Note:new(time, direction, sustainTime, type, skin)
 	self.time = time
 	self._targetTime = 0
 
-	self.wasGoodHit, self.wasGoodSustainHit, self.wasFullSustainHit
+	self.wasGoodHit, self.wasGoodSustainHit, self.wasFullSustainHit,
 	self.tooLate, self.ignoreNote, self.lastPress = false, false, false, false, false, nil
 	self.priority, self.earlyHitMult, self.lateHitMult = 0, 1, 1
 	self.showNote, self.showNoteOnHit = true, false
