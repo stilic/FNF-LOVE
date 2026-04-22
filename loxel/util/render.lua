@@ -186,8 +186,11 @@ function RenderUtil.init()
 											getProc("glBlendFuncSeparate"))
 		else
 			-- ??? ig?
-			glBlendEquationSeparate = gl_lib.glBlendEquationSeparate
-			glBlendFuncSeparate	 = gl_lib.glBlendFuncSeparate
+			-- glBlendEquationSeparate = gl_lib.glBlendEquationSeparate
+			-- glBlendFuncSeparate	 = gl_lib.glBlendFuncSeparate
+			love.graphics.setBlendState = __NULL__
+			Logger.log("debug", "not supported yet :)")
+			return
 		end
 
 		local MODES = {
