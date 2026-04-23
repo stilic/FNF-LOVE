@@ -184,11 +184,11 @@ local function getram()
 			return tonumber(bytes)
 		end
 	elseif os == "Linux" then
-		handle = io.popen("free -b | awk '/^Mem:/ {print $2}'")
-		if handle then
-			result = handle:read("*all")
+		local ok, handle = pcall(io.popen, "free -b 2>/dev/null | awk '/^Mem:/ {print $2}'")
+		if ok and handle then
+			local result = handle:read("*all")
 			handle:close()
-			return tonumber(result:match("%d+"))
+			return tonumber(result:match("%d+")) or 0
 		end
 	elseif os == "OSX" or os == "BSD" then
 		handle = io.popen("sysctl -n hw.memsize 2>/dev/null || sysctl -n hw.physmem")
