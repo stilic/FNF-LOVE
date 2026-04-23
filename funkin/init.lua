@@ -239,12 +239,23 @@ function funkin.setEnvironment(settings)
 	love.window.setTitle(data.appName)
 	love.window.setIcon(love.image.newImageData(data.appIcon))
 
+	love.graphics.setBackgroundColor(data.window.color[1], data.window.color[2], data.window.color[3])
+
 	game.width, game.height = data.window.width, data.window.height
-	love.window.updateMode(data.window.width * res, data.window.height * res, {
-		fullscreen = isMobile or ClientPrefs.data.fullscreen,
-		resizable = not isMobile,
-		usedpiscale = false
-	})
+	local w, h, flags = love.window.getMode()
+	if not love.window.isOpen() then
+		love.window.setMode(data.window.width * res, data.window.height * res, {
+			fullscreen = isMobile or ClientPrefs.data.fullscreen,
+			resizable = not isMobile,
+			usedpiscale = false
+		})
+	else
+		love.window.updateMode(data.window.width * res, data.window.height * res, {
+			fullscreen = isMobile or ClientPrefs.data.fullscreen,
+			resizable = not isMobile,
+			usedpiscale = false
+		})
+	end
 	if Project.adaptableWidth then
 		local w, h = love.graphics.getDimensions()
 		local screenRatio = w / h
@@ -258,8 +269,6 @@ function funkin.setEnvironment(settings)
 		end
 	end
 	Transition.width = game.width
-
-	love.graphics.setBackgroundColor(data.window.color[1], data.window.color[2], data.window.color[3])
 
 	if Discord then
 		Discord.clientID = data.discord.id
