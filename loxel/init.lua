@@ -184,7 +184,7 @@ local function getram()
 			return tonumber(bytes)
 		end
 	elseif os == "Linux" then
-		if not os.getenv("container") then
+		if not _G.os.getenv("container") then
 			handle = io.popen("free -b 2>/dev/null | awk '/^Mem:/ {print $2}'")
 			if handle then
 				result = handle:read("*all")
