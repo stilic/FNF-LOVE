@@ -336,15 +336,6 @@ function funkin.throwError(msg)
 	collectgarbage("collect")
 	collectgarbage()
 	collectgarbage()
-	local ffi = require "ffi"
-	if game.system.os == "Linux" then
-		pcall(function() ffi.cdef[[void malloc_trim(size_t);]] ffi.C.malloc_trim(0) end)
-	elseif game.system.os == "Windows" then
-		pcall(function()
-			ffi.cdef[[void* GetCurrentProcess(); int EmptyWorkingSet(void*);]]
-			ffi.load("psapi").EmptyWorkingSet(ffi.C.GetCurrentProcess())
-		end)
-	end
 
 	local interactTxt = ""
 	if love.system then

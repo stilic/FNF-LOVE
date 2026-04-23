@@ -365,23 +365,7 @@ local function switch(state)
 	game.isSwitchingState = false
 
 	triggerCallback(game.onPostStateSwitch, state)
-	jit.flush()
 	collectgarbage("collect")
-	if game.system.os == "Linux" then
-		pcall(function()
-			ffi.cdef[[void malloc_trim(size_t);]]
-			ffi.C.malloc_trim(0)
-		end)
-	elseif game.system.os == "Windows" then
-		pcall(function()
-			ffi.cdef[[
-				void* GetProcessHeap();
-				size_t HeapCompact(void* hHeap, uint32_t dwFlags);
-			]]
-			ffi.C.HeapCompact(ffi.C.GetProcessHeap(), 0)
-		end)
-	end
-	collectgarbage()
 	collectgarbage()
 end
 
