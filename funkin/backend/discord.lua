@@ -148,6 +148,12 @@ function Discord.heartbeat()
 end
 
 function Discord.update()
+	if thread and thread:getError() then
+		Logger.log("debug", "Thread crashed: " .. tostring(thread:getError()))
+		thread = nil
+		ready = false
+	end
+
 	local msg = ec:pop()
 	while msg do
 		local type = msg[1]
