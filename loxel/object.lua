@@ -7,7 +7,6 @@ Object.defaultAntialiasing = false
 local floor, min, max = math.floor, math.min, math.max
 
 local ffi = require("ffi")
-local C = ffi.C
 ffi.cdef[[
 	typedef struct {
 		float x, y, rad, sx, sy, ox, oy, kx, ky;
