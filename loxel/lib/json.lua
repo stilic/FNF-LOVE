@@ -29,7 +29,9 @@ local math_type = math.type or function(v)
 end
 
 ffi.cdef[[
-	double strtod(const char* nptr, char** endptr);
+	typedef void* locale_t;
+	locale_t newlocale(int category_mask, const char *locale, locale_t base);
+	double strtod_l(const char *nptr, char **endptr, locale_t loc);
 ]]
 local end_ptr_ptr = ffi.new("char*[1]")
 
