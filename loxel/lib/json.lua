@@ -273,10 +273,10 @@ local function decode_string()
 	end
 end
 
+local c_locale = ffi.C.newlocale(4, "C", nil)
 local function decode_number_fast()
 	local current_ptr = ffi.cast("const char*", buf_ptr + (statusPos - 1))
-
-	local num = ffi.C.strtod(current_ptr, end_ptr_ptr)
+	local num = ffi.C.strtod_l(current_ptr, end_ptr_ptr, c_locale)
 	local consumed = ffi.cast("const char*", end_ptr_ptr[0]) - current_ptr
 	if consumed == 0 then decode_error("invalid number at position " .. statusPos) end
 
