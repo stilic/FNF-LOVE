@@ -20,6 +20,7 @@ typedef unsigned int size_t;
 typedef unsigned short sa_family_t;
 typedef unsigned int socklen_t;
 typedef int ssize_t;
+typedef long time_t;
 
 struct sockaddr {
 	sa_family_t sa_family;
@@ -31,8 +32,14 @@ struct sockaddr_un {
 	char sun_path[104];
 };
 
+struct timeval {
+	time_t tv_sec;
+	time_t tv_usec;
+};
+
 int socket(int domain, int type, int protocol);
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
 ssize_t send(int sockfd, const void *buf, size_t len, int flags);
 ssize_t recv(int sockfd, void *buf, size_t len, int flags);
 int close(int fd);
@@ -82,18 +89,20 @@ local function stringify(data)
 	end
 end
 
+local _pid_cdef_done = false
 local function getPID()
-	if jit.os == "Windows" then
-		ffi.cdef[[
-			unsigned long GetCurrentProcessId(void);
-		]]
+	if not _pid_cdef_done then
+		_pid_cdef_done = true
+		if jit.os == "Windows" then
+			ffi.cdef[[ unsigned long GetCurrentProcessId(void); ]]
+		else
+			ffi.cdef[[ int getpid(void); ]]
+		end
+	end
 
+	if jit.os == "Windows" then
 		return ffi.C.GetCurrentProcessId()
 	else
-		ffi.cdef[[
-			int getpid(void);
-		]]
-
 		return ffi.C.getpid()
 	end
 end
@@ -239,6 +248,9 @@ function discordIPC:connect()
 
 				if connected == 0 then
 					print("Connected to DiscordIPC Pipe #"..i)
+					local SOL_SOCKET, SO_RCVTIMEO = 1, 20
+					local tv = ffi.new("struct timeval", {tv_sec = 5, tv_usec = 0})
+					ffi.C.setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, tv, ffi.sizeof(tv))
 					self.socket = socket
 					self.connected = true
 					break
@@ -396,7 +408,6 @@ end
 --- this is an internal function and should not be used outside of this library
 function discordIPC:__receive()
 	if not self.connected then return nil, nil end
-	local opcode, length, data = nil, nil, nil
 
 	if jit.os == "Windows" then
 		local header = self:__read(8)
@@ -404,32 +415,39 @@ function discordIPC:__receive()
 			self:close()
 			return nil, nil
 		end
-		opcode, length = _unpack(header)
-		data = self:__read(length)
+		local opcode, length = _unpack(header)
+		local data = self:__read(length)
+		---@diagnostic disable-next-line: return-type-mismatch
+		return opcode, data
 	else
-		local hbuffer = ffi.new("char[8]")
-		local hbytes = ffi.C.recv(self.socket, hbuffer, 8, 0)
+		local function recvAll(size)
+			local buf = ffi.new("char[?]", size)
+			local total = 0
+			while total < size do
+				local n = ffi.C.recv(self.socket, buf + total, size - total, 0)
+				if n <= 0 then return nil end
+				total = total + n
+			end
+			return ffi.string(buf, size)
+		end
 
-		if hbytes <= 0 then
+		local header = recvAll(8)
+		if not header then
 			self:close()
 			return nil, nil
 		end
 
-		opcode, length = _unpack(ffi.string(hbuffer, hbytes))
+		local opcode, length = _unpack(header)
 
-		local dbuffer = ffi.new("char[" .. length .. "]")
-		local dbytes = ffi.C.recv(self.socket, dbuffer, length, 0)
-
-		if dbytes <= 0 then
+		local data = recvAll(length)
+		if not data then
 			self:close()
 			return nil, nil
 		end
 
-		data = ffi.string(dbuffer, dbytes)
+		---@diagnostic disable-next-line: return-type-mismatch
+		return opcode, data
 	end
-
-	---@diagnostic disable-next-line: return-type-mismatch
-	return opcode, data
 end
 
 ---@param buf number
