@@ -8,7 +8,7 @@ function love.load(args)
 	funkin.load()
 	if args then
 		for i = 1, #args do
-			if args[i] == "--terminal" then
+			if args[i] == "--cupid" then
 				cupid = require "lib.cupid"
 				cupid.setup()
 				break
