@@ -31,7 +31,7 @@ require "funkin.backend.scripts.events"
 Mods = require "funkin.backend.modding.mods"
 Addons = require "funkin.backend.modding.addons"
 
-Discord = require "funkin.backend.discord"
+-- Discord = require "funkin.backend.discord"
 
 Skin = require "funkin.backend.gameplay.skin"
 Receptor = require "funkin.gameplay.receptor"

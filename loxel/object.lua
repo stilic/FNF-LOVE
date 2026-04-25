@@ -7,14 +7,20 @@ Object.defaultAntialiasing = false
 local floor, min, max = math.floor, math.min, math.max
 
 local ffi = require("ffi")
-local C = ffi.C
-ffi.cdef[[
-	typedef struct {
-		float x, y, rad, sx, sy, ox, oy, kx, ky;
-		float minX, minY, maxX, maxY;
-		float m11, m12, m21, m22, dx, dy; //  matrix compons
-	} TransformData;
-]]
+local TransformData
+if Project.flags.jitFFI then
+	local ffi = require("ffi")
+	ffi.cdef[[
+		typedef struct {
+			float x, y, rad, sx, sy, ox, oy, kx, ky;
+			float minX, minY, maxX, maxY;
+			float m11, m12, m21, m22, dx, dy;
+		} TransformData;
+	]]
+	TransformData = function() return ffi.new("TransformData") end
+else
+	TransformData = function() return {} end
+end
 
 function Object:setupDrawLogic(camera, initDraw)
 	if initDraw == nil then initDraw = true end
@@ -87,7 +93,7 @@ function Object:new(x, y)
 	self.acceleration = Point()
 
 	-- self._transform = love.math.newTransform()
-	self._data = ffi.new("TransformData") -- internal, never use
+	self._data = TransformData() -- internal, never use
 end
 
 function Object:destroy()

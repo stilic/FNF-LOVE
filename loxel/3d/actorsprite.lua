@@ -1,7 +1,6 @@
 --[[
 	Probably need a rework because the vertices are still locked to 4,
 	because its in fixed length,
-	also probably change it to ffi datas
 ]]
 local rad, fastsin, fastcos = math.rad, math.fastsin, math.fastcos
 local max, min = math.max, math.min

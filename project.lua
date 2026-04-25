@@ -18,6 +18,7 @@ return {
 	company = "Stilic",
 
 	flags = {
+		loxelInitWindow = true,
 		checkForUpdates = false,
 
 		loxelInitialAutoPause = true,
@@ -29,7 +30,7 @@ return {
 		loxelDisableScissorOnRenderCameraSimple = false,
 		loxelDefaultClipCamera = true,
 
-		jitFFI = jit.status(),
+		jitFFI = false,
 
 		imageAlphaBleed = true,
 		imageQuality = 1,
