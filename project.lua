@@ -30,7 +30,7 @@ return {
 		loxelDisableScissorOnRenderCameraSimple = false,
 		loxelDefaultClipCamera = true,
 
-		jitFFI = false,
+		jitFFI = jit.status(),
 
 		imageAlphaBleed = true,
 		imageQuality = 1,
