@@ -4,7 +4,6 @@ local Options = Substate:extend("Options")
 local settings = table.new(0, 3)
 settings.Gameplay = require "funkin.ui.options.gameplay"
 settings.Display = require "funkin.ui.options.display"
-settings.Controls = require "funkin.ui.options.controls"
 
 function Options:new(showBG, completionCallback)
 	Options.super.new(self)
@@ -12,7 +11,17 @@ function Options:new(showBG, completionCallback)
 	self.persistentUpdate = false
 	self.persistentDraw = true
 
-	self.settingsNames = {"Gameplay", "Display", "Controls"}
+	self.settingsNames = {"Gameplay", "Display"}
+
+	if love.system.getDevice() ~= "Mobile" then
+		settings.Controls = require "funkin.ui.options.controls"
+		table.insert(self.settingsNames, "Controls")
+	end
+
+	if Mods.currentMod and paths.exists(paths.getMods("data/options.json"), "file") then
+		settings.Mod = require "funkin.ui.options.mod"
+		table.insert(self.settingsNames, "Mod")
+	end
 
 	self.showBG = showBG
 	self.completionCallback = completionCallback

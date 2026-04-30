@@ -80,11 +80,38 @@ ClientPrefs.controls = {
 	debug_2 = {"key:6"},
 }
 
+ClientPrefs.mods = {}
+function ClientPrefs.__setMod()
+	ClientPrefs.mods[Mods.currentMod] = ClientPrefs.mods[Mods.currentMod] or {}
+	ClientPrefs.mod = setmetatable({}, {
+		__index = function(_, k)
+			return ClientPrefs.save.data.mods[Mods.currentMod][k]
+		end,
+		__newindex = function(_, k, v)
+			ClientPrefs.save.data.mods[Mods.currentMod][k] = v
+		end
+	})
+
+	local json = loxreq "lib.json".decode(love.filesystem.read(paths.getMods("data/options.json")))
+	for _, options in pairs(json) do
+		for _, option in pairs(options) do
+			if ClientPrefs.mods[Mods.currentMod][option.data] == nil then
+				ClientPrefs.mods[Mods.currentMod][option.data] = option.defaultValue
+			end
+		end
+	end
+end
+
 function ClientPrefs.saveData()
 	ClientPrefs.data.fullscreen = love.window.getFullscreen()
 
 	ClientPrefs.save.data.prefs = ClientPrefs.data
 	ClientPrefs.save.data.controls = ClientPrefs.controls
+
+	if Mods.currentMod and paths.exists(paths.getMods("data/options.json")) then
+		ClientPrefs.__setMod()
+	end
+	ClientPrefs.save.data.mods = ClientPrefs.mods
 
 	ClientPrefs.save:save()
 end
@@ -94,5 +121,6 @@ ClientPrefs.save = game.save("preferences")
 ClientPrefs.save:load()
 pcall(table.merge, ClientPrefs.data, ClientPrefs.save.data.prefs)
 pcall(table.merge, ClientPrefs.controls, ClientPrefs.save.data.controls)
+pcall(table.merge, ClientPrefs.mods, ClientPrefs.save.data.mods)
 
 return ClientPrefs

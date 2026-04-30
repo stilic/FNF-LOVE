@@ -122,6 +122,10 @@ function funkin.load()
 	paths.initCompressedSupport()
 
 	Mods.reload()
+	if Mods.currentMod and paths.exists(paths.getMods("data/options.json")) then
+		ClientPrefs.__setMod()
+	end
+
 	Addons.reload()
 	Highscore.load()
 
