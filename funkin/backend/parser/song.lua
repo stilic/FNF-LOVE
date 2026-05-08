@@ -1,3 +1,4 @@
+local NoteBuffer = require "funkin.backend.notebuffer"
 local Song = Classic:extend("Song")
 
 local metadefs = {
@@ -53,7 +54,7 @@ function Song.newChart(name, dummyData)
 		skin = dummyData and "default" or nil,
 
 		events = {},
-		notes = {player = {}, enemy = {}}
+		notes = {player = NoteBuffer(), enemy = NoteBuffer()}
 	}
 end
 
