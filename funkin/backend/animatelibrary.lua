@@ -1,14 +1,60 @@
+local json = loxreq "lib.json"
 local AnimateLibrary = loxreq "animateatlas.library"
 
 local AnimateLib = AnimateLibrary:extend("AnimateLib")
 
 function AnimateLib:new(folder)
+	self._defer = true
 	AnimateLib.super.new(self, folder)
-	self.loaded = true
+	self._defer = false
+	self.loaded = false
+end
+
+function AnimateLib:loadImages()
+	if self._defer then return end
+	AnimateLib.super.loadImages(self)
 end
 
 function AnimateLib:loadAsync(callback)
-	if callback then callback(self) end
+	local images = self.images
+
+	if not images or #images == 0 then
+		self.loaded = true
+		if callback then callback(self) end
+		return
+	end
+
+	local remaining = #images
+
+	for _, loadData in ipairs(images) do
+		local imagePath = loadData.image_path
+		local jsonPath  = loadData.json_path
+		paths.async.queueTask("image", imagePath, function(tex)
+			if tex then
+				local atlasData = json.decode(love.filesystem.read("string", jsonPath))
+				local texW, texH = tex:getWidth(), tex:getHeight()
+				local sprites = atlasData.ATLAS.SPRITES
+
+				for z = 1, #sprites do
+					local sprite = sprites[z].SPRITE
+					local n_id = self:getStringId(sprite.name)
+					self.sprite_quads[n_id] = love.graphics.newQuad(sprite.x, sprite.y, sprite.w, sprite.h, texW, texH)
+					self.sprite_textures[n_id] = tex
+					if sprite.rotated then
+						self.sprite_rotated[n_id] = true
+						self.sprite_w[n_id] = sprite.w
+					end
+				end
+			end
+
+			remaining = remaining - 1
+			if remaining == 0 then
+				self.images = nil
+				self.loaded = true
+				if callback then callback(self) end
+			end
+		end)
+	end
 end
 
 return AnimateLib

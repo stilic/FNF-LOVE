@@ -2,7 +2,7 @@ local decodeJson = (loxreq "lib.json").decode
 local parseXml = loxreq "lib.xml"
 
 local FrameCollection = loxreq "animation.frame.collection"
-local AnimateLibrary = require "funkin.backend.animatelibrary"
+local AnimateLibrary = loxreq "animateatlas.library"
 
 local asyncModule = require "funkin.backend.paths.async"
 
@@ -138,9 +138,7 @@ function Library:getAnimateAtlas(key)
 	local path = paths.getPath("images/" .. key)
 	return generate(self, self.animate_atlases, path, function(y)
 		if y then
-			local lib = AnimateLibrary(path)
-			--lib:load()
-			return lib
+			return AnimateLibrary(path)
 		end
 	end, "animate atlas", true)
 end

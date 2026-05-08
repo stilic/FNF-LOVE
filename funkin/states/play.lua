@@ -120,7 +120,7 @@ function PlayState:preload()
 	}
 
 	local path, sprite
-	for i, part in ipairs(PlayState.SONG.skin.data) do
+	for i, part in pairs(PlayState.SONG.skin.data) do
 		path, sprite = "skins/" .. PlayState.SONG.skin.skin .. "/", part.sprite
 		if part.skin then path = "skins/" .. part.skin .. "/" end
 		if sprite then
@@ -150,12 +150,13 @@ function PlayState:preload()
 	for i = 1, 3 do table.insert(list, {"sound", "gameplay/missnote" .. i}) end
 
 	self.stage = Stage(PlayState.SONG.stage)
+	self.stage:precache()
+
 	for _, char in ipairs({PlayState.SONG.gfVersion, PlayState.SONG.player1, PlayState.SONG.player2}) do
 		if char and char ~= "" then
 			local data = Parser.getCharacter(char)
 			if data then
-				local kind = paths.exists(paths.getPath(data.sprite .. "/Animation.json")) and "animate" or "image"
-				if kind == "animate" then return end -- TODO remove this check and fix the async animatelib
+				local kind = paths.exists(paths.getPath("images/" .. data.sprite .. "/Animation.json"), "file") and "animate" or "image"
 				table.insert(list, {kind, data.sprite})
 
 				if data.animations and kind ~= "animate" then
@@ -1450,7 +1451,7 @@ function PlayState:endSong(skip)
 				Highscore.saveWeekScore(self.storyWeekFile, self.storyScore, self.songDifficulty)
 			end
 
-			local stickers = Stickers(nil, StoryMenuState())
+			local stickers = StickerSubstate(nil, StoryMenuState())
 			self:openSubstate(stickers)
 
 			util.playMenuMusic()

@@ -14,11 +14,6 @@ function Stage:new(name)
 		self.script:linkObject(self)
 		self.script:set("SCRIPT_PATH", path .. "/")
 		self.script:set("self", self)
-
-		local list = self.script:call("preload")
-		if list and type(list) == "table" then
-			paths.async.loadBatch(list)
-		end
 	else
 		noScript = true
 	end
@@ -26,18 +21,27 @@ function Stage:new(name)
 	self.data = Parser.getStage(self.name)
 	noData = self.data == false
 
+	if noData and noScript then
+		Logger.log("warn", "No stage found for " .. name)
+	end
+end
+
+function Stage:precache()
+	if self.script then
+		local list = self.script:call("preload")
+		if list and type(list) == "table" then
+			paths.async.loadBatch(list)
+		end
+	end
 	if self.data then
 		local list = {}
-		for _, prop in pairs(self.data.objects) do
-			if prop[11] == "image" then
-				table.insert(list, {"image", path .. "/" .. prop[12]})
+		local stagePath = "stages/" .. self.name .. "/"
+		for _, prop in ipairs(self.data.objects) do
+			if prop.type ~= "graphic" and prop.assetPath then
+				table.insert(list, {"image", stagePath .. prop.assetPath})
 			end
 		end
 		paths.async.loadBatch(list)
-	end
-
-	if noData and noScript then
-		Logger.log("warn", "No stage found for " .. name)
 	end
 end
 
