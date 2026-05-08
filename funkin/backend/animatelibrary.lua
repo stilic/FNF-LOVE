@@ -16,40 +16,41 @@ function AnimateLib:loadImages()
 end
 
 function AnimateLib:loadAsync(callback)
-	local images = self.images
+	local textures = self.textures
 
-	if not images or #images == 0 then
+	if not textures or #textures == 0 then
 		self.loaded = true
 		if callback then callback(self) end
 		return
 	end
 
-	local remaining = #images
+	local remaining = #textures
 
-	for _, loadData in ipairs(images) do
-		local imagePath = loadData.image_path
-		local jsonPath  = loadData.json_path
-		paths.async.queueTask("image", imagePath, function(tex)
+	for _, loadData in ipairs(textures) do
+		local image_path = loadData.image_path
+		local json_path  = loadData.json_path
+
+		paths.async.queueTask("image", image_path, function(tex)
 			if tex then
-				local atlasData = json.decode(love.filesystem.read("string", jsonPath))
+				local atlasData = json.decode(love.filesystem.read("string", json_path))
 				local texW, texH = tex:getWidth(), tex:getHeight()
 				local sprites = atlasData.ATLAS.SPRITES
 
 				for z = 1, #sprites do
 					local sprite = sprites[z].SPRITE
 					local n_id = self:getStringId(sprite.name)
-					self.sprite_quads[n_id] = love.graphics.newQuad(sprite.x, sprite.y, sprite.w, sprite.h, texW, texH)
+					self.sprite_quads[n_id]    = love.graphics.newQuad(sprite.x, sprite.y, sprite.w, sprite.h, texW, texH)
 					self.sprite_textures[n_id] = tex
 					if sprite.rotated then
 						self.sprite_rotated[n_id] = true
-						self.sprite_w[n_id] = sprite.w
+						self.sprite_w[n_id]       = sprite.w
 					end
 				end
 			end
 
 			remaining = remaining - 1
 			if remaining == 0 then
-				self.images = nil
+				self.textures = nil
 				self.loaded = true
 				if callback then callback(self) end
 			end

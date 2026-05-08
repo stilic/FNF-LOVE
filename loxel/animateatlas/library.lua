@@ -142,10 +142,10 @@ function AnimateLibrary:new(folder)
 	end
 	self.framerate = framerate
 
-	self.imageLoads = {}
+	self.textures = {}
 	for _, item in ipairs(love.filesystem.getDirectoryItems(folder)) do
 		if string.startsWith(item, "spritemap") and string.endsWith(item, ".json") then
-			table.insert(self.imageLoads, {
+			table.insert(self.textures, {
 				json_path = folder .. "/" .. item,
 				image_path = folder .. "/" .. string.sub(item, 1, #item - 5) .. ".png"
 			})
@@ -430,8 +430,8 @@ function AnimateLibrary:getColorId(colorData, opt)
 end
 
 function AnimateLibrary:loadImages()
-	if not self.imageLoads then return end
-	for _, loadData in ipairs(self.imageLoads) do
+	if not self.textures then return end
+	for _, loadData in ipairs(self.textures) do
 		local tex = love.graphics.newImage(loadData.image_path)
 		local data = json.decode(love.filesystem.read("string", loadData.json_path))
 		local texW, texH = tex:getWidth(), tex:getHeight()
@@ -449,7 +449,7 @@ function AnimateLibrary:loadImages()
 			end
 		end
 	end
-	self.imageLoads = nil
+	self.textures = nil
 end
 
 function AnimateLibrary:getTimelineLength(tl_idx)
