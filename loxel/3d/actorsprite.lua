@@ -5,29 +5,59 @@
 local rad, fastsin, fastcos = math.rad, math.fastsin, math.fastcos
 local max, min = math.max, math.min
 
-local ffi = require("ffi")
+local ffi
+local VERTEX_SIZE
 
-ffi.cdef[[
-	typedef struct {
-		float x, y;
-		float u, v, w;
-		uint8_t r, g, b, a;
-	} ActorVertex;
-]]
-
-local VERTEX_SIZE = ffi.sizeof("ActorVertex")
+if Project.flags.jitFFI then
+	ffi = require("ffi")
+	ffi.cdef[[
+		typedef struct {
+			float x, y;
+			float u, v, w;
+			uint8_t r, g, b, a;
+		} ActorVertex;
+	]]
+	VERTEX_SIZE = ffi.sizeof("ActorVertex")
+else
+	VERTEX_SIZE = 1
+end
 
 local Animation = loxreq "animation"
 
 local ActorSprite = Actor:extend("ActorSprite")
 ActorSprite:implement(Sprite)
 
--- Actors have their own shader format, to avoid uv affine.
 ActorSprite.vertexFormat = {
 	{"VertexPosition", "float", 2},
 	{"VertexTexCoord", "float", 3},
-	{"VertexColor",    "byte",  4}
+	{"VertexColor",	"byte",  4}
 }
+
+local function newVertexStorage(count)
+	if Project.flags.jitFFI then
+		local data = love.data.newByteData(VERTEX_SIZE * count)
+		local arr  = ffi.cast("ActorVertex*", data:getFFIPointer())
+		for i = 0, count - 1 do
+			arr[i].r, arr[i].g, arr[i].b, arr[i].a = 255, 255, 255, 255
+		end
+		return data, arr, count
+	else
+		local arr = {}
+		for i = 0, count - 1 do
+			arr[i] = {x = 0, y = 0, u = 0, v = 0, w = 0, r = 255, g = 255, b = 255, a = 255}
+		end
+		return arr, arr, count
+	end
+end
+
+local function buildMeshTable(vertexArray, vCount)
+	local t = {}
+	for i = 1, vCount do
+		local p = vertexArray[i - 1]
+		t[i] = {p.x, p.y, p.u, p.v, p.w, p.r, p.g, p.b, p.a}
+	end
+	return t
+end
 
 local defaultShader
 function ActorSprite.init()
@@ -55,13 +85,7 @@ function ActorSprite:new(x, y, z, texture)
 		{0, 1, 0, 0, 1},
 	}
 
-	self.vertexData = love.data.newByteData(VERTEX_SIZE * 4)
-	self.vertexArray = ffi.cast("ActorVertex*", self.vertexData:getFFIPointer())
-
-	for i = 0, 3 do
-		local ptr = self.vertexArray[i]
-		ptr.r, ptr.g, ptr.b, ptr.a = 255, 255, 255, 255
-	end
+	self.vertexData, self.vertexArray, self.__vertexCapacity = newVertexStorage(4)
 
 	self.mesh = ActorSprite.allMesh
 	self.clipRect = nil
@@ -191,13 +215,9 @@ function ActorSprite:__render(camera)
 	local m33 = -angx0 * angy0
 
 	local vCount = #self.vertices
-	if not self.vertexArray or self.vertexData:getSize() < VERTEX_SIZE * vCount then
-		self.vertexData = love.data.newByteData(VERTEX_SIZE * vCount)
-		self.vertexArray = ffi.cast("ActorVertex*", self.vertexData:getFFIPointer())
-		for i = 0, vCount - 1 do
-			local ptr = self.vertexArray[i]
-			ptr.r, ptr.g, ptr.b, ptr.a = 255, 255, 255, 255
-		end
+
+	if not self.vertexArray or self.__vertexCapacity < vCount then
+		self.vertexData, self.vertexArray, self.__vertexCapacity = newVertexStorage(vCount)
 	end
 
 	for i = 1, vCount do
@@ -230,7 +250,11 @@ function ActorSprite:__render(camera)
 	end
 
 	local mesh = self.mesh
-	mesh:setVertices(self.vertexData)
+	if Project.flags.jitFFI then
+		mesh:setVertices(self.vertexData)
+	else
+		mesh:setVertices(buildMeshTable(self.vertexArray, vCount))
+	end
 	mesh:setDrawRange(1, vCount)
 
 	if mesh:getTexture() ~= self.texture then mesh:setTexture(self.texture) end

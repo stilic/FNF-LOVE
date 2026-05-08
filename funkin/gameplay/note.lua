@@ -4,6 +4,15 @@ local math = math
 local max, min, round = math.max, math.min, math.round
 local atan, fastsin, fastcos = math.atan, math.fastsin, math.fastcos
 
+local function buildMeshTable(vertexArray, vCount)
+	local t = {}
+	for i = 1, vCount do
+		local p = vertexArray[i - 1]
+		t[i] = {p.x, p.y, p.u, p.v, p.w, p.r, p.g, p.b, p.a}
+	end
+	return t
+end
+
 local Note = ActorSprite:extend("Note")
 
 Note.safeZoneOffset = 1 / 6
@@ -18,14 +27,19 @@ local susMesh, susData, susVerts
 function Note.init()
 	if susMesh then return end
 	susMesh = love.graphics.newMesh(ActorSprite.vertexFormat, 16, "strip")
-	susData = love.data.newByteData(ffi.sizeof("ActorVertex") * 16)
-	susVerts = ffi.cast("ActorVertex*", susData:getFFIPointer())
 
-	for i = 0, 15 do
-		susVerts[i].r = 255
-		susVerts[i].g = 255
-		susVerts[i].b = 255
-		susVerts[i].a = 255
+	if Project.flags.jitFFI then
+		susData  = love.data.newByteData(ffi.sizeof("ActorVertex") * 16)
+		susVerts = ffi.cast("ActorVertex*", susData:getFFIPointer())
+		for i = 0, 15 do
+			susVerts[i].r, susVerts[i].g, susVerts[i].b, susVerts[i].a = 255, 255, 255, 255
+		end
+	else
+		susVerts = {}
+		for i = 0, 15 do
+			susVerts[i] = {x = 0, y = 0, u = 0, v = 0, w = 0, r = 255, g = 255, b = 255, a = 255}
+		end
+		susData = susVerts
 	end
 end
 
@@ -414,7 +428,13 @@ function Note:__render(camera)
 					end
 				end
 
-				susMesh:setDrawRange(1, gotVerts); susMesh:setVertices(susData); love.graphics.draw(susMesh)
+				susMesh:setDrawRange(1, gotVerts)
+				if Project.flags.jitFFI then
+					susMesh:setVertices(susData)
+				else
+					susMesh:setVertices(buildMeshTable(susVerts, gotVerts))
+				end
+				love.graphics.draw(susMesh)
 			end
 
 			if suspos >= minbound then
@@ -496,7 +516,13 @@ function Note:__render(camera)
 
 					suspos, uvfh = suspos - fh, uvfh - fhs
 					if enduv or vi > vertLens then
-						susMesh:setDrawRange(1, vi - 1); susMesh:setVertices(susData); love.graphics.draw(susMesh)
+						susMesh:setDrawRange(1, vi - 1)
+						if Project.flags.jitFFI then
+							susMesh:setVertices(susData)
+						else
+							susMesh:setVertices(buildMeshTable(susVerts, vi - 1))
+						end
+						love.graphics.draw(susMesh)
 
 						if enduv then
 							break
