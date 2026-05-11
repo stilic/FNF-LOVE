@@ -31,6 +31,16 @@ function Receptor:new(x, y, direction, skin)
 			cover.play = function(_, a, b, c) Receptor.play(cover, a, b, c, false, true) end
 			cover.direction, cover.parent = self.direction, self
 			cover.__shaderAnimations, cover.ignoreAffectByGroup = {}, true
+			cover.__render = function(c, camera)
+				if c.__rgbColors then
+					local col = c.__rgbColors
+					local s = RGBShader.actorShader
+					s:send("r", {col[1][1], col[1][2], col[1][3]})
+					s:send("g", {col[2][1], col[2][2], col[2][3]})
+					s:send("b", {col[3][1], col[3][2], col[3][3]})
+				end
+				ActorSprite.__render(c, camera)
+			end
 			Note.loadSkinData(cover, self.skin, "covers", self.direction)
 			cover:updateHitbox()
 			return cover
@@ -39,6 +49,16 @@ function Receptor:new(x, y, direction, skin)
 			splash.play = function(_, a, b, c) Receptor.play(splash, a, b, c, false, true) end
 			splash.direction, splash.parent = self.direction, self
 			splash.__shaderAnimations, splash.ignoreAffectByGroup = {}, true
+			splash.__render = function(s, camera)
+				if s.__rgbColors then
+					local col = s.__rgbColors
+					local sh = RGBShader.actorShader
+					sh:send("r", {col[1][1], col[1][2], col[1][3]})
+					sh:send("g", {col[2][1], col[2][2], col[2][3]})
+					sh:send("b", {col[3][1], col[3][2], col[3][3]})
+				end
+				ActorSprite.__render(s, camera)
+			end
 			Note.loadSkinData(splash, self.skin, "splashes", self.direction)
 			splash:updateHitbox()
 			return splash
@@ -264,7 +284,9 @@ function Receptor:play(anim, force, frame, dontShader, isSplashOrCover)
 	end
 
 	if not dontShader then
-		self.shader = self.__shaderAnimations[anim] or self.__shaderAnimations.default
+		local colors = self.__shaderAnimations[anim] or self.__shaderAnimations.default
+		self.__rgbColors = colors
+		self.shader = colors and RGBShader.actorShader or nil
 	end
 end
 
@@ -279,6 +301,13 @@ end
 function Receptor:__render(camera)
 	self._x, self._y, self._z = self.x, self.y, self.z
 	if not self.hideReceptor then
+		if self.__rgbColors then
+			local c = self.__rgbColors
+			local s = RGBShader.actorShader
+			s:send("r", {c[1][1], c[1][2], c[1][3]})
+			s:send("g", {c[2][1], c[2][2], c[2][3]})
+			s:send("b", {c[3][1], c[3][2], c[3][3]})
+		end
 		ActorSprite.__render(self, camera)
 	end
 
@@ -287,6 +316,13 @@ function Receptor:__render(camera)
 		glow.x, glow.y, glow.z, glow.scale, glow.zoom, glow.rotation, glow.vertices, glow.__vertices, glow.fov, glow.mesh =
 			self.x, self.y, self.z, self.scale, self.zoom, self.rotation, self.vertices, self.__vertices, self.fov, self.mesh
 
+		if glow.__rgbColors or self.__rgbColors then
+			local c = glow.__rgbColors or self.__rgbColors
+			local s = RGBShader.actorShader
+			s:send("r", {c[1][1], c[1][2], c[1][3]})
+			s:send("g", {c[2][1], c[2][2], c[2][3]})
+			s:send("b", {c[3][1], c[3][2], c[3][3]})
+		end
 		ActorSprite.__render(glow, camera)
 	end
 end

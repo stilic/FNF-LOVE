@@ -119,6 +119,8 @@ function funkin.load()
 		love.graphics.setBackgroundColor(Project.bgColor)
 	end
 
+	RGBShader.init()
+
 	paths.initCompressedSupport()
 
 	Mods.reload()

@@ -91,7 +91,7 @@ function Note:reset(time, direction, sustainTime, type, skin)
 	self.sustainSegments = Note.defaultSustainSegments
 	self.__lastScoreTime = nil
 
-	self.isGhost, self.sustainTime, self.skin, self.shader = false, nil, nil, nil
+	self.isGhost, self.sustainTime, self.skin, self.shader, self.__rgbColors = false, nil, nil, nil, nil
 	if self.__shaderAnimations then
 		table.clear(self.__shaderAnimations)
 	end
@@ -119,11 +119,24 @@ function Note:_addAnim(...)
 end
 
 local function makeRGB(color)
-	return RGBShader.actorCreate(
+	return {
 		Color.fromString(color[1]),
 		Color.fromString(color[2]),
 		Color.fromString(color[3])
-	)
+	}
+end
+
+local function applyRGBShader(sprite, fallback)
+	local c = sprite.__rgbColors
+	if c then
+		local s = RGBShader.actorShader
+		s:send("r", {c[1][1], c[1][2], c[1][3]})
+		s:send("g", {c[2][1], c[2][2], c[2][3]})
+		s:send("b", {c[3][1], c[3][2], c[3][3]})
+		love.graphics.setShader(s)
+	else
+		love.graphics.setShader(sprite.shader or fallback)
+	end
 end
 
 function Note:loadSkinData(skinData, name, direction, noRgb)
@@ -269,7 +282,9 @@ function Note:play(anim, force, frame, dontShader, skipName)
 	self:centerOffsets()
 
 	if not dontShader then
-		self.shader = self.__shaderAnimations[anim] or self.__shaderAnimations.default
+		local colors = self.__shaderAnimations[anim] or self.__shaderAnimations.default
+		self.__rgbColors = colors
+		self.shader = colors and RGBShader.actorShader or nil
 	end
 end
 
@@ -381,7 +396,7 @@ function Note:__render(camera)
 				hfw, fh, gotVerts = hfw * ssc.x / 2, fh / segments * ssc.y, vertLens
 
 				tex:setFilter(susend.antialiasing and "linear" or "nearest")
-				love.graphics.setShader(susend.shader or defaultShader); love.graphics.setBlendMode(susend.blend)
+				applyRGBShader(susend, dshader); love.graphics.setBlendMode(susend.blend)
 				love.graphics.setColor(susend.color[1], susend.color[2], susend.color[3], susend.alpha * almult)
 				susMesh:setTexture(tex)
 
@@ -452,7 +467,7 @@ function Note:__render(camera)
 				fh = fh / segments
 
 				tex:setFilter(sus.antialiasing and "linear" or "nearest")
-				love.graphics.setShader(sus.shader or defaultShader); love.graphics.setBlendMode(sus.blend)
+				applyRGBShader(sus, dshader); love.graphics.setBlendMode(sus.blend)
 				love.graphics.setColor(sus.color[1], sus.color[2], sus.color[3], sus.alpha * almult)
 				susMesh:setTexture(tex)
 
@@ -557,6 +572,13 @@ function Note:__render(camera)
 	end
 
 	if self.showNote and (self.isGhost or not self.wasGoodHit or self.showNoteOnHit) then
+		if self.__rgbColors then
+			local c = self.__rgbColors
+			local s = RGBShader.actorShader
+			s:send("r", {c[1][1], c[1][2], c[1][3]})
+			s:send("g", {c[2][1], c[2][2], c[2][3]})
+			s:send("b", {c[3][1], c[3][2], c[3][3]})
+		end
 		ActorSprite.__render(self, camera)
 	end
 
