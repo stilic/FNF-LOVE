@@ -14,7 +14,7 @@ local https = {
 }
 
 local OS = love.system.getOS()
-local s, lib = pcall(require, "https")
+local s, lib, ok, result = pcall(require, "https")
 
 if not s then
 	if OS == "Android" or OS == "iOS" then
@@ -22,14 +22,25 @@ if not s then
 		lib = setmetatable({}, {__index = function() return __NULL__ end})
 	else
 		if OS == "OS X" then OS = "osx" end
-		local loader, err_msg = package.loadlib("lib/" .. OS:lower() .. "/https", "luaopen_https")
+		local OS = love.system.getOS()
+		local oslow = OS:lower()
+		local ext = oslow == "windows" and ".dll" or ".so"
+		local arch = oslow == "os x" and "" or (jit and ("." .. jit.arch) or ".x64")
+		local loader, err_msg = package.loadlib("lib/" .. oslow .. "/https" .. arch .. ext, "luaopen_https")
 		if type(loader) == "function" then
-			lib = loader()
+			ok, result = pcall(loader)
+			if ok then
+				lib = result
+			else
+				print("https loader error:", result)
+			end
+		else
+			print("https loadlib failed:", err_msg)
 		end
 	end
 end
 
-if not lib then
+if (not ok and not s) or not lib then
 	if Logger then Logger.log("error", "HTTPS Module failed: " .. tostring(err_msg)) end
 	-- makes a curl request, in case the modules fails
 	lib = {
