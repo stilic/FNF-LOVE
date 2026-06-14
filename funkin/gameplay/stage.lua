@@ -132,32 +132,50 @@ function Stage:generateStage()
 	local path = "stages/" .. self.name .. '/'
 
 	for _, prop in ipairs(self.data.objects) do
-		local instance
+		local instance, isAnimate
 
 		if prop.type == "graphic" then
 			instance = Graphic(prop.x, prop.y, prop.scaleX, prop.scaleY)
 			instance.color = prop.assetPath and Color.fromString(prop.assetPath) or Color.BLACK
 		else
-			instance = Sprite(prop.x, prop.y)
+			local lib = paths.getAnimateAtlas(path .. prop.assetPath)
+			if lib then
+				instance = AnimateAtlas(prop.x, prop.y)
+				instance:load(lib)
+				isAnimate = true
+				Logger.log("debug", "shit")
+			else
+				instance = Sprite(prop.x, prop.y)
+			end
 			local isAnimated = #prop.animations > 0
 
 			if isAnimated then
-				instance:setFrames(paths.getAtlas(path .. prop.assetPath, prop.isPixel))
-				for _, anim in ipairs(prop.animations) do
-					if anim.func == "add" then
-						instance.animation:add(anim.name, anim.indices, anim.frameRate, anim.looped)
-					elseif anim.func == "addByIndices" then
-						instance.animation:addByIndices(anim.name, anim.prefix, anim.indices, "", anim.frameRate, anim.looped)
-					elseif anim.func == "addByPrefix" then
-						instance.animation:addByPrefix(anim.name, anim.prefix, anim.frameRate, anim.looped)
+				if isAnimate then
+					for _, anim in ipairs(prop.animations) do
+						local success = instance.animation:addFromLibrary(anim.name, anim.prefix, "", anim.frameRate, anim.looped)
+						if not success then instance.animation:add(anim.name, anim.prefix, anim.frameRate, anim.looped) end
 					end
-					if anim.offsets then
-						local a = instance.animation:get(anim.name)
-						if a then a.offset:set(anim.offsets[1], anim.offsets[2]) end
+					if prop.startAnimation then
+						instance.animation:play(prop.startAnimation, true)
 					end
-				end
-				if prop.startAnimation then
-					instance.animation:play(prop.startAnimation, true)
+				else
+					instance:setFrames(paths.getAtlas(path .. prop.assetPath, prop.isPixel))
+					for _, anim in ipairs(prop.animations) do
+						if anim.func == "add" then
+							instance.animation:add(anim.name, anim.indices, anim.frameRate, anim.looped)
+						elseif anim.func == "addByIndices" then
+							instance.animation:addByIndices(anim.name, anim.prefix, anim.indices, "", anim.frameRate, anim.looped)
+						elseif anim.func == "addByPrefix" then
+							instance.animation:addByPrefix(anim.name, anim.prefix, anim.frameRate, anim.looped)
+						end
+						if anim.offsets then
+							local a = instance.animation:get(anim.name)
+							if a then a.offset:set(anim.offsets[1], anim.offsets[2]) end
+						end
+					end
+					if prop.startAnimation then
+						instance.animation:play(prop.startAnimation, true)
+					end
 				end
 			else
 				instance:loadTexture(paths.getImage(path .. prop.assetPath, prop.isPixel))
@@ -177,7 +195,13 @@ function Stage:generateStage()
 		instance.antialiasing = not prop.isPixel
 		instance.danceSpeed = prop.danceSpeed
 
-		instance:updateHitbox()
+		if isAnimate then
+			-- local ox, oy = instance:getBoundTopLeft()
+			-- instance.offset:set(instance.offset.x + ox * (instance.flipX and -1 or 1),
+			-- 	instance.offset.y + oy * (instance.flipY and -1 or 1))
+		else
+			instance:updateHitbox()
+		end
 		self:add(instance)
 		table.insert(self.jsonInstances, instance)
 
