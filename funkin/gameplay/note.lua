@@ -471,8 +471,12 @@ function Note:__render(camera)
 				love.graphics.setColor(sus.color[1], sus.color[2], sus.color[3], sus.alpha * almult)
 				susMesh:setTexture(tex)
 
+				if suspos > maxbound then
+					local rdist = segments * fh
+					suspos = suspos - math.floor((suspos - maxbound) / rdist) * rdist
+				end
 				getValues(rec, suspos + 1, Receptor.getDefaultValues(values)); applyMod(mods, beat, suspos + 1, par, dir)
-				suspos, vertLens, vx, vy, vz = min(suspos, maxbound), min(2 + segments * 2, 16), worldSpin(
+				vertLens, vx, vy, vz = min(2 + segments * 2, 16), worldSpin(
 					(snx + values.x) * gsx,
 					(sny + values.y) * gsy,
 					(snz + values.z) * gsz,
