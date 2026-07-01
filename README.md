@@ -19,3 +19,8 @@ Please follow our [contributing guidelines](CONTRIBUTING.md) while contributing 
 - [TehPuertoRicanSpartan](https://github.com/TehPuertoRicanSpartan)
 - [Shirobuu](https://github.com/Shirobuuh)
 - [Dawn Fowler](https://github.com/fowluhhdevbcfunny)
+- [Carrot](https://github.com/n64carrot)
+
+## Former Dev Team members
+
+- [Raltyro](https://github.com/Raltyro) (huge thanks to them for the 3d and modchart code)
