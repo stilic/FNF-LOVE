@@ -54,14 +54,7 @@ function Backdrop:new(texture, axes, sx, sy)
 	self._ids = {}
 
 	self.axes = axes or "xy"
-	self.spacing = {
-		x = sx or 0,
-		y = sy or 0,
-		set = function(this, x, y)
-			this.x = x or this.x
-			this.y = y or this.y
-		end
-	}
+	self.spacing = Point()
 end
 
 function Backdrop:loadTexture(...)
@@ -104,8 +97,7 @@ function Backdrop:__render(camera)
 	local tileW = (fw + spx) * math.abs(sx)
 	local tileH = (fh + spy) * math.abs(sy)
 
-	local zoomX = (type(camera.zoom) == "number" and camera.zoom or camera.zoom.x) or 1
-	local zoomY = (type(camera.zoom) == "number" and camera.zoom or camera.zoom.y) or 1
+	local zoomX, zoomY = camera:getZoomXY()
 
 	local viewW = camera.width / zoomX
 	local viewH = camera.height / zoomY
