@@ -24,3 +24,4 @@ Please follow our [contributing guidelines](CONTRIBUTING.md) while contributing 
 ## Former Dev Team members
 
 - [Raltyro](https://github.com/Raltyro) (huge thanks to them for the 3d and modchart code)
+- [Ikawa](https://github.com/ikawaluvyu)
