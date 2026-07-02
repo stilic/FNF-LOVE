@@ -58,7 +58,7 @@ local function getStuff(data, eventData, bpm, psych)
 					d = column % 4,
 					l = n[3],
 					k = kind,
-					gf = gf or (not hit and s.gfSection)
+					gf = gf or s.gfSection
 				}
 				table.insert(hit and bf or dad, newNote)
 			end
