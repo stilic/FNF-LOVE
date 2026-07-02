@@ -33,6 +33,9 @@ function Note:new(time, direction, sustainTime, type, skin)
 	self.type = type
 	self.group = nil
 
+	self.strumGlowCancelled = false
+	self.coverSpawnCancelled = false
+
 	self.sustainSegments = Note.defaultSustainSegments
 
 	self.direction, self.data = direction, direction -- data is for backward compatibilty
