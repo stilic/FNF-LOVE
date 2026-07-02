@@ -1,4 +1,4 @@
-local os = (require"love.system").getOS()
+local os = (require "love.system").getOS()
 
 return {
 	DEBUG_MODE = true,
@@ -6,8 +6,8 @@ return {
 	title = "Friday Night Funkin' Löve",
 	file = "FNF-LOVE",
 	icon = "art/icon.png",
-	version = "1.0.1-dev",
-	package = "com.stilic.fnflove",
+	version = "0.1.0",
+	package = "fr.stilic.fnflove",
 	width = 1280,
 	height = 720,
 

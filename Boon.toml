@@ -7,11 +7,11 @@
 authors = "Stilic"
 
 # A description of your game. Not used in all builds.
-description = "A port of Friday Night Funkin' to LOVE2D."
+description = "A port of Friday Night Funkin' to the LÖVE game engine."
 
 # An email to contact for support or more information. Not used
 # in all builds.
-email = "lateman-jpeg@outlook.fr"
+email = "stilic@oss.zone"
 
 # A short abbreviated name. Ideally, it should not contain spaces
 # or other special characters, though they can be used. On Windows,
@@ -25,12 +25,12 @@ title = "FNF LOVE"
 
 # The Uniform Type Identifier for your game. This is required for the
 # macOS build of the game.
-uti = "org.stilic.fnflove"
+uti = "fr.stilic.fnflove"
 
 # An arbitrary version for the current iteration of the game. Can use
 # any desired version format. This will be used to differentiate the
 # resulting build files.
-version = "1.0.0"
+version = "0.1.0"
 
 #
 # Build settings
