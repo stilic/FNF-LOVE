@@ -926,7 +926,7 @@ function PlayState:update(dt)
 	for _, nf in pairs(self.notefields) do
 		if not nf.is then goto continue end
 		nf.time, nf.beat = time, PlayState.conductor.currentBeatFloat
-		local isPlayer, sustainOffset = not nf.bot, 0.25 / nf.speed
+		local isPlayer, isPNF, sustainOffset = not nf.bot, nf == self.playerNotefield, 0.25 / nf.speed
 
 		for _, note in ipairs(nf:getNotes(time, nil, true)) do
 			local hasInput = not isPlayer or controls:down(PlayState.keysControls[note.direction])
@@ -936,7 +936,7 @@ function PlayState:update(dt)
 				if not note.lastPress or hasInput then note.lastPress = time end
 
 				if not note.wasGoodSustainHit then
-					if hasInput and nf == self.playerNotefield then
+					if hasInput and isPNF then
 						if not note.__lastScoreTime then note.__lastScoreTime = note.time end
 
 						local currentCap = math.min(time, note.time + note.sustainTime)
