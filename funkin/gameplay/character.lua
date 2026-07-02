@@ -105,16 +105,22 @@ function Character:new(x, y, char, isPlayer)
 	self.dirAnim, self.danced, self.isDanced, self.waitingFinish = nil, false, false, false
 	self.lastHit = math.negative_infinity
 
-	self.danceSpeed = data.dance_beats or 1
 	self.holdTime = data.sing_duration or 8
 
 	self.anim.onFinish:add(bind(self, self.__animFinished))
 
 	if self.isPlayer then self.flipX = not self.flipX end
 
+	self.danceSpeed = data.dance_beats
 	if self.anim:has('danceLeft') and self.anim:has('danceRight') then
+		if not self.danceSpeed then
+			self.danceSpeed = 1
+		end
 		self.idleAnims = {'danceLeft', 'danceRight'}
 	else
+		if not self.danceSpeed then
+			self.danceSpeed = 2
+		end
 		self.idleAnims = {'idle'}
 	end
 	self.idleIndex = 1
