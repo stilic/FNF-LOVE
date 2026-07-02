@@ -400,6 +400,7 @@ function PlayState:enter()
 		self.judgeSprites, self.countdown, self.healthBar, self.scoreText
 	}) do o.cameras = {self.camHUD} end
 
+	self.ratingNeedsRecalc = false
 	self.score = 0
 	self.combo = 0
 	self.misses = 0
@@ -921,6 +922,7 @@ function PlayState:update(dt)
 
 	local time = PlayState.conductor.time / 1000
 	local missOffset = time - Note.safeZoneOffset / 1.25
+	local shouldRecalculateRating = false
 	for _, nf in pairs(self.notefields) do
 		if not nf.is then goto continue end
 		nf.time, nf.beat = time, PlayState.conductor.currentBeatFloat
@@ -931,9 +933,24 @@ function PlayState:update(dt)
 			local char = note.character or (note.gf and self.gf or nf.character)
 
 			if note.wasGoodHit then
-				if hasInput then note.lastPress = time end
+				if not note.lastPress or hasInput then note.lastPress = time end
 
-				if not note.wasGoodSustainHit and note.lastPress then
+				if not note.wasGoodSustainHit then
+					if hasInput and nf == self.playerNotefield then
+						if not note.__lastScoreTime then note.__lastScoreTime = note.time end
+
+						local currentCap = math.min(time, note.time + note.sustainTime)
+						if currentCap > note.__lastScoreTime then
+							local diff = currentCap - note.__lastScoreTime
+							if diff > 0 and not PlayState.practiceMode then
+								self.score = self.score + math.floor(diff * 300)
+
+								self.ratingNeedsRecalc = true
+								note.__lastScoreTime = currentCap
+							end
+						end
+					end
+
 					local noteEnd = note.time + note.sustainTime
 					if noteEnd - sustainOffset <= note.lastPress then
 						local fullHeld = noteEnd <= note.lastPress
@@ -962,6 +979,11 @@ function PlayState:update(dt)
 			end
 		end
 		::continue::
+	end
+
+	if self.ratingNeedsRecalc then
+		self:recalculateRating()
+		self.ratingNeedsRecalc = false
 	end
 
 	self.camZoomMult = util.coolLerp(self.camZoomMult, 1, 3, dt * self.camZoomSpeed)
@@ -1164,17 +1186,6 @@ function PlayState:goodSustainHit(note, time, fullyHeldSustain)
 	if not event.cancelled and not note.wasGoodSustainHit then
 		note.wasGoodSustainHit = true
 		if notefield.lastSustain == note then notefield.lastSustain = nil end
-
-		if notefield == self.playerNotefield then
-			if fullScore then
-				self.score = self.score + note.sustainTime * 1000
-			else
-				self.score = self.score
-					+ math.min(time - note.lastPress + Note.safeZoneOffset,
-						note.sustainTime) * 1000
-			end
-			self:recalculateRating()
-		end
 
 		if not event.cancelledAnim then
 			self:resetStroke(notefield, dir, fullyHeldSustain)

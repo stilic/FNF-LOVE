@@ -162,13 +162,6 @@ function Notefield:addNote(note)
 	return note
 end
 
-function Notefield:makeNote(time, column, sustain, type, skin)
-	local note = Note(time, column, sustain, type, skin or self.skin)
-	note.parent = self
-	table.insert(self.activeNotes, note)
-	return note
-end
-
 function Notefield:removeNoteFromIndex(idx)
 	local note = self.activeNotes[idx]
 	if not note then return end
