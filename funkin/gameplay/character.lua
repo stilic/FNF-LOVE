@@ -60,8 +60,7 @@ function Character:new(x, y, char, isPlayer)
 				if not self._animAtlas then
 					self.anim:addByIndices(anim, name, indices, nil, fps, loop)
 				else
-					local success = self.anim:addFromLibraryIndices(anim, name, "", indices, fps, loop)
-					if not success then self.anim:addByIndices(anim, name, indices, fps, loop) end
+					self.anim:addByIndices(anim, name, indices, fps, loop)
 				end
 			else
 				if not self._animAtlas then
@@ -130,9 +129,6 @@ function Character:new(x, y, char, isPlayer)
 
 	self:dance()
 	self.anim:finish()
-
-	self:updateHitbox()
-	if self._animAtlas then self._animAtlas:centerOrigin() end
 end
 
 function Character:__animFinished(name)
@@ -237,22 +233,11 @@ function Character:hasAnim(name)
 	return self.anim:has(name)
 end
 
-function Character:getWidth()
+function Character:getMidpoint(...)
 	if self._animAtlas then
-		return self._animAtlas.width
+		return self._animAtlas:getMidpoint(...)
 	end
-	return self.width
-end
-
-function Character:getHeight()
-	if self._animAtlas then
-		return self._animAtlas.height
-	end
-	return self.height
-end
-
-function Character:getMidpoint()
-	return self.x + self:getWidth() / 2, self.y + self:getHeight() / 2
+	return Character.super.getMidpoint(self, ...)
 end
 
 function Character:updateHitbox()
@@ -286,38 +271,9 @@ function Character:canDraw()
 	return Character.super.canDraw(self)
 end
 
-function Character:getBoundaryTransform()
-	if self._animAtlas then
-		local d = self._data
-		local x, y = self.x, self.y
-		local ox, oy, offx, offy = self.origin.x, self.origin.y, self.offset.x, self.offset.y
-		local ang = math.rad(self.angle)
-		local sx, sy = self.scale.x * self.zoom.x, self.scale.y * self.zoom.y
-		local kx, ky = self.skew.x, self.skew.y
-
-		if self.flipX then sx = -sx end
-		if self.flipY then sy = -sy end
-
-		if self.anim and self.anim.curAnim then
-			local ax, ay = self.anim.curAnim:rotateOffset(self.angle, sx, sy)
-			x, y = x - ax, y - ay
-		end
-
-		local dx, dy = x + ox - offx, y + oy - offy
-		local s, c = math.fastsin(ang), math.fastcos(ang)
-
-		d.m11 = c * sx - ky * s * sy
-		d.m12 = s * sx + ky * c * sy
-		d.m21 = kx * c * sx - s * sy
-		d.m22 = kx * s * sx + c * sy
-
-		d.dx = dx - (ox * d.m11 + oy * d.m21)
-		d.dy = dy - (ox * d.m12 + oy * d.m22)
-
-		return d
-	end
-
-	return Character.super.getBoundaryTransform(self)
+function Character:_canDraw()
+	if self._animAtlas then return Object._canDraw(self) end
+	return Character.super._canDraw(self)
 end
 
 function Character:__render(camera)
