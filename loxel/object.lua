@@ -6,10 +6,10 @@ Object.defaultAntialiasing = false
 
 local floor, min, max = math.floor, math.min, math.max
 
-local ffi = require("ffi")
+local ffi
 local TransformData
 if Project.flags.jitFFI then
-	local ffi = require("ffi")
+	ffi = require("ffi")
 	ffi.cdef[[
 		typedef struct {
 			float x, y, rad, sx, sy, ox, oy, kx, ky;
@@ -28,8 +28,8 @@ function Object:setupDrawLogic(camera, initDraw)
 		self.scale.x * self.zoom.x, self.scale.y * self.zoom.y,
 		self.origin.x, self.origin.y
 
-	if self.flipX then sx = -sx end
-	if self.flipY then sy = -sy end
+	sx = self.flipX and -sx or sx
+	sy = self.flipY and -sy or sy
 
 	if camera.pixelPerfect then
 		x, y, ox, oy = floor(x), floor(y), floor(ox), floor(oy)
@@ -41,8 +41,9 @@ function Object:setupDrawLogic(camera, initDraw)
 	end
 	if initDraw then
 		love.graphics.setShader(self.shader)
+		if self.colortransform then self.colortransform:apply(self.shader) end
+
 		if self.blend == "multiply" then
-			-- rgb op, alpha op, srcfacRGB, srcfacA, dtsfacRGB, dstFactorA
 			love.graphics.setBlendState("add", "add", "dstcolor", "one", "oneminussrcalpha", "oneminussrcalpha")
 		else
 			love.graphics.setBlendMode(self.blend, self.blendMethod)
@@ -92,8 +93,9 @@ function Object:new(x, y)
 	self.velocity = Point()
 	self.acceleration = Point()
 
-	-- self._transform = love.math.newTransform()
-	self._data = TransformData() -- internal, never use
+	self.colortransform = ColorTransform()
+
+	self._data = TransformData()
 end
 
 function Object:destroy()
@@ -107,6 +109,7 @@ function Object:destroy()
 	self.acceleration:zero()
 
 	self.shader = nil
+	self.colortransform = nil
 	self._data = nil
 	Object.super.destroy(self)
 end
@@ -134,15 +137,15 @@ end
 
 function Object:center(obj, axes)
 	local centerAll = axes == nil or axes == "xy"
-	local sw, sh = self.getWidth and self:getWidth() or self.width,
-		self.getHeight and self:getHeight() or self.height
+	local sw = (self.getWidth and self.getWidth(self)) or self.width
+	local sh = (self.getHeight and self.getHeight(self)) or self.height
 
 	if centerAll or axes == "x" then
-		local w = obj.getWidth and obj:getWidth() or obj.width
+		local w = (obj.getWidth and obj:getWidth()) or obj.width
 		self.x = obj.x + (w - sw) / 2
 	end
 	if centerAll or axes == "y" then
-		local h = obj.getHeight and obj:getHeight() or obj.height
+		local h = (obj.getHeight and obj:getHeight()) or obj.height
 		self.y = obj.y + (h - sh) / 2
 	end
 	return self
@@ -191,8 +194,8 @@ function Object:isOnScreen(cameras, x, y, w, h, sfx, sfy)
 		ox, oy, ow, oh = d.minX, d.minY, d.maxX - d.minX, d.maxY - d.minY
 	end
 
-	if sfx == nil then sfx = self.scrollFactor and self.scrollFactor.x or 1 end
-	if sfy == nil then sfy = self.scrollFactor and self.scrollFactor.y or 1 end
+	sfx = sfx or (self.scrollFactor and self.scrollFactor.x) or 1
+	sfy = sfy or (self.scrollFactor and self.scrollFactor.y) or 1
 
 	if cameras.x then return cameras:_check(ox, oy, ow, oh, sfx, sfy) end
 	for _, camera in pairs(cameras) do
@@ -214,8 +217,8 @@ function Object:getBoundaryTransform()
 	local sx, sy = self.scale.x * self.zoom.x, self.scale.y * self.zoom.y
 	local kx, ky = self.skew.x, self.skew.y
 
-	if self.flipX then sx = -sx end
-	if self.flipY then sy = -sy end
+	sx = self.flipX and -sx or sx
+	sy = self.flipY and -sy or sy
 
 	if self.animation and self.animation.curAnim then
 		local ax, ay = self.animation.curAnim:rotateOffset(self.angle, sx, sy)
@@ -227,7 +230,8 @@ function Object:getBoundaryTransform()
 	local dox, doy = ox, oy
 
 	if frame and type(frame) == "table" then
-		local fox, foy = frame.offset and frame.offset.x or 0, frame.offset and frame.offset.y or 0
+		local fox = (frame.offset and frame.offset.x) or 0
+		local foy = (frame.offset and frame.offset.y) or 0
 		if frame.rotated then
 			ang, sx, sy, kx, ky = ang - math.pi / 2, sy, sx, ky, kx
 			local _, _, qw, qh = frame.quad:getViewport()

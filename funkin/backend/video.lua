@@ -22,6 +22,8 @@ function Video:new(x, y, source, screenAdjust, autoDestroy, looped)
 
 	self:setVolume()
 	self.video:rewind()
+
+	self.colortransform = nil
 end
 
 function Video:adjust(width, height)
@@ -96,7 +98,7 @@ function Video:__render(camera)
 
 	love.graphics.push("all")
 	self.video:setFilter(mode, mode, anisotropy)
-	local x, y, rad, sx, sy, ox, oy, kx, ky = self:setupDrawLogic(camera)
+	local x, y, rad, sx, sy, ox, oy, kx, ky = self:setupDrawLogic(camera, true)
 	love.graphics.draw(self.video, x, y, rad, sx, sy, ox, oy, kx, ky)
 	self.video:setFilter(min, mag, anisotropy)
 	love.graphics.pop()

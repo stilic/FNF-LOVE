@@ -135,6 +135,8 @@ end
 Classic = loxreq "lib.classic"
 Stub = loxreq "stub"
 
+ColorTransform = loxreq "util.colortransform"
+
 Point = loxreq "util.point"
 Basic = loxreq "basic"
 Object = loxreq "object"
