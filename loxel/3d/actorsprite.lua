@@ -163,12 +163,16 @@ function ActorSprite:__render(camera)
 	self.texture:setFilter(mode, mode, anisotropy)
 
 	local f = self:getCurrentFrame()
+	local ang = self.angle
+	if f and f.rotated then
+		ang = ang - 90
+	end
 
 	local x, y, z, rx, ry, rz, sx, sy, sz, ox, oy, oz =
 		self.x - self.offset.x - (camera.scroll.x * self.scrollFactor.x),
 		self.y - self.offset.y - (camera.scroll.y * self.scrollFactor.y),
 		self.z - self.offset.z,
-		self.rotation.x, self.rotation.y, self.rotation.z - self.angle,
+		self.rotation.x, self.rotation.y, self.rotation.z - ang,
 		self.scale.x * self.zoom.x, self.scale.y * self.zoom.y, self.scale.z * self.zoom.z,
 		self.origin.x, self.origin.y, self.origin.z
 
@@ -179,15 +183,18 @@ function ActorSprite:__render(camera)
 		x, y = x - ax, y - ay
 	end
 
-	if f and f.rotated then
-		ox, oy = ox - 0, oy - f.width + oy
-		rz = rz - 90
+	if f then
+		if f.rotated then
+			ox, oy = select(3, f.quad:getViewport()) - (oy + f.offset.y), ox + f.offset.x
+			sx, sy, kx, ky = sy, sx, ky, kx
+		else
+			ox, oy = ox + f.offset.x, oy + f.offset.y
+		end
 	end
 
 	local tw, th = self.texture:getWidth(), self.texture:getHeight()
 	local fw, fh, uvx, uvy, uvw, uvh = tw, th, 0, 0, 1, 1
 	if f then
-		ox, oy = ox + f.offset.x, oy + f.offset.y
 		uvx, uvy, fw, fh = f.quad:getViewport()
 		uvx, uvy, uvw, uvh = uvx / tw, uvy / th, fw / tw, fh / th
 	end

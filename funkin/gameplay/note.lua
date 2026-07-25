@@ -387,12 +387,20 @@ function Note:__render(camera)
 				local snx, sny, snz, ssc, tex = susend.x + nx, susend.y + ny, (susend.z or 0) + nz, susend.scale, susend.texture
 				local f, tw, th = susend:getCurrentFrame(), tex:getWidth(), tex:getHeight()
 				local hfw, fh, uvx, uvy, uvxw, uvh = tw, th, 0, 0, 1, 1
+				local frot = false
 				if f then
 					uvx, uvy, hfw, fh = f.quad:getViewport()
-					if susend.antialiasing then uvy, fh = uvy + 1, fh - 1 end
-					uvx, uvy, uvxw, uvh = uvx / tw, uvy / th, (hfw + uvx) / tw, fh / th
+					frot = f.rotated
+					if frot then
+						uvx, uvy, uvxw, uvh = uvx / tw, uvy / th, (hfw + uvx) / tw, fh / th
+						hfw, fh = fh, hfw
+					else
+						if susend.antialiasing then uvy, fh = uvy + 1, fh - 1 end
+						uvx, uvy, uvxw, uvh = uvx / tw, uvy / th, (hfw + uvx) / tw, fh / th
+					end
 				end
 				local fhs = uvh / segments
+				local uw, fuw = 0, (uvxw - uvx) / segments
 				hfw, fh, gotVerts = hfw * ssc.x / 2, fh / segments * ssc.y, vertLens
 
 				tex:setFilter(susend.antialiasing and "linear" or "nearest")
@@ -426,20 +434,35 @@ function Note:__render(camera)
 
 					local ptr1 = susVerts[vi - 1]
 					ptr1.x, ptr1.y = vx - hfw * ac, vy - hfw * as
-					ptr1.u, ptr1.v, ptr1.w = uvx * vz, (uvy + uvh) * vz, vz
+					if frot then
+						ptr1.u, ptr1.v, ptr1.w = (uvx + uw) * vz, uvy * vz, vz
+					else
+						ptr1.u, ptr1.v, ptr1.w = uvx * vz, (uvy + uvh) * vz, vz
+					end
 					ptr1.a = values.alpha * 255
 
 					local ptr2 = susVerts[vi]
 					ptr2.x, ptr2.y = vx + hfw * ac, vy + hfw * as
-					ptr2.u, ptr2.v, ptr2.w = uvxw * vz, (uvy + uvh) * vz, vz
+					if frot then
+						ptr2.u, ptr2.v, ptr2.w = (uvx + uw) * vz, (uvy + uvh) * vz, vz
+					else
+						ptr2.u, ptr2.v, ptr2.w = uvxw * vz, (uvy + uvh) * vz, vz
+					end
 					ptr2.a = values.alpha * 255
 
-					if vi + 1 < vertLens then suspos, uvh = suspos - fh, uvh - fhs end
+					if vi + 1 < vertLens then
+						suspos = suspos - fh
+						if frot then uw = uw + fuw else uvh = uvh - fhs end
+					end
 					if enduv then
 						gotVerts = vi + 1
 						break
 					elseif suspos < minbound then
-						suspos, uvh, enduv = minbound, uvh - ((suspos - minbound) / ssc.y / th / segments), true
+						if frot then
+							suspos, uw, enduv = minbound, uw + (suspos - minbound) * (fuw / fh), true
+						else
+							suspos, uvh, enduv = minbound, uvh - ((suspos - minbound) / ssc.y / th / segments), true
+						end
 					end
 				end
 
@@ -456,10 +479,17 @@ function Note:__render(camera)
 				local snx, sny, snz, ssc, tex = sus.x + nx, sus.y + ny, (sus.z or 0) + nz, sus.scale, sus.texture
 				local f, tw, th = sus:getCurrentFrame(), tex:getWidth(), tex:getHeight()
 				local hfw, fh, uvx, uvy, uvxw, uvh = tw, th, 0, 0, 1, 1
+				local frot = false
 				if f then
 					uvx, uvy, hfw, fh = f.quad:getViewport()
-					if sus.antialiasing then uvy, fh = uvy + 1, fh - 2 end
-					uvx, uvy, uvxw, uvh = uvx / tw, uvy / th, (hfw + uvx) / tw, fh / th
+					frot = f.rotated
+					if frot then
+						uvx, uvy, uvxw, uvh = uvx / tw, uvy / th, (hfw + uvx) / tw, fh / th
+						hfw, fh = fh, hfw
+					else
+						if sus.antialiasing then uvy, fh = uvy + 1, fh - 2 end
+						uvx, uvy, uvxw, uvh = uvx / tw, uvy / th, (hfw + uvx) / tw, fh / th
+					end
 				end
 				local ssy = max(fh * ssc.y, 64) / fh
 				hfw, fh = hfw * ssc.x / 2, max(fh * ssc.y, 64)
@@ -484,26 +514,40 @@ function Note:__render(camera)
 				)
 				local pvx, pvy = toScreen(vx + gx, vy + gy, vz + gz, fov)
 				local uvfh, fhs, uvyh, vi, enduv, aa, as, ac = uvh, uvh / segments, uvy + uvh, 1
+				local uw, fuw = 0, (uvxw - uvx) / segments
 
 				if gotVerts then
 					local vert2 = susVerts[gotVerts - 1]
 					local vert1 = susVerts[gotVerts - 2]
 
-					suspos, uvfh = suspos - fh, uvfh - fhs
+					suspos = suspos - fh
+					if frot then uw = uw + fuw else uvfh = uvfh - fhs end
 					vi = 3
 
 					local dst2 = susVerts[1]
 					dst2.x, dst2.y = vert2.x, vert2.y
-					dst2.u, dst2.v, dst2.w = uvxw * vert2.w, uvyh * vert2.w, vert2.w
+					if frot then
+						dst2.u, dst2.v, dst2.w = uvx * vert2.w, (uvy + uvh) * vert2.w, vert2.w
+					else
+						dst2.u, dst2.v, dst2.w = uvxw * vert2.w, uvyh * vert2.w, vert2.w
+					end
 					dst2.a = vert2.a
 
 					local dst1 = susVerts[0]
 					dst1.x, dst1.y = vert1.x, vert1.y
-					dst1.u, dst1.v, dst1.w = uvx * vert1.w, uvyh * vert1.w, vert1.w
+					if frot then
+						dst1.u, dst1.v, dst1.w = uvx * vert1.w, uvy * vert1.w, vert1.w
+					else
+						dst1.u, dst1.v, dst1.w = uvx * vert1.w, uvyh * vert1.w, vert1.w
+					end
 					dst1.a = vert1.a
 
 					if suspos < minbound then
-						suspos, uvfh, enduv = minbound, uvfh - ((suspos - minbound) / ssy / th / segments), true
+						if frot then
+							suspos, uw, enduv = minbound, uw + (suspos - minbound) * (fuw / fh), true
+						else
+							suspos, uvfh, enduv = minbound, uvfh - ((suspos - minbound) / ssy / th / segments), true
+						end
 					end
 				end
 
@@ -523,17 +567,27 @@ function Note:__render(camera)
 
 					local ptr1 = susVerts[vi - 1]
 					ptr1.x, ptr1.y = vx - hfw * ac, vy - hfw * as
-					ptr1.u, ptr1.v, ptr1.w = uvx * vz, (uvy + uvfh) * vz, vz
+					if frot then
+						ptr1.u, ptr1.v, ptr1.w = (uvx + uw) * vz, uvy * vz, vz
+					else
+						ptr1.u, ptr1.v, ptr1.w = uvx * vz, (uvy + uvfh) * vz, vz
+					end
 					ptr1.a = values.alpha * 255
 					vi = vi + 1
 
 					local ptr2 = susVerts[vi - 1]
 					ptr2.x, ptr2.y = vx + hfw * ac, vy + hfw * as
-					ptr2.u, ptr2.v, ptr2.w = uvxw * vz, (uvy + uvfh) * vz, vz
+					if frot then
+						ptr2.u, ptr2.v, ptr2.w = (uvx + uw) * vz, (uvy + uvh) * vz, vz
+					else
+						ptr2.u, ptr2.v, ptr2.w = uvxw * vz, (uvy + uvfh) * vz, vz
+					end
 					ptr2.a = values.alpha * 255
 					vi = vi + 1
 
-					suspos, uvfh = suspos - fh, uvfh - fhs
+					suspos = suspos - fh
+					if frot then uw = uw + fuw else uvfh = uvfh - fhs end
+
 					if enduv or vi > vertLens then
 						susMesh:setDrawRange(1, vi - 1)
 						if Project.flags.jitFFI then
@@ -546,26 +600,43 @@ function Note:__render(camera)
 						if enduv then
 							break
 						else
-							local srcRight                     = susVerts[vi - 2]
-							local srcLeft                      = susVerts[vi - 3]
+							local srcRight = susVerts[vi - 2]
+							local srcLeft  = susVerts[vi - 3]
 
-							local dstRight                     = susVerts[1]
-							dstRight.x, dstRight.y             = srcRight.x, srcRight.y
-							dstRight.u, dstRight.v, dstRight.w = srcRight.u, uvyh * srcRight.w, srcRight.w
-							dstRight.a                         = srcRight.a
+							if frot then
+								uw = fuw
+								local dstRight = susVerts[1]
+								dstRight.x, dstRight.y             = srcRight.x, srcRight.y
+								dstRight.u, dstRight.v, dstRight.w = uvx * srcRight.w, (uvy + uvh) * srcRight.w, srcRight.w
+								dstRight.a                         = srcRight.a
 
-							uvfh                               = uvh - fhs
-							vi                                 = 3
+								local dstLeft = susVerts[0]
+								dstLeft.x, dstLeft.y               = srcLeft.x, srcLeft.y
+								dstLeft.u, dstLeft.v, dstLeft.w   = uvx * srcLeft.w, uvy * srcLeft.w, srcLeft.w
+								dstLeft.a                          = srcLeft.a
+							else
+								uvfh = uvh - fhs
 
-							local dstLeft                      = susVerts[0]
-							dstLeft.x, dstLeft.y               = srcLeft.x, srcLeft.y
-							dstLeft.u, dstLeft.v, dstLeft.w    = srcLeft.u, uvyh * srcLeft.w, srcLeft.w
-							dstLeft.a                          = srcLeft.a
+								local dstRight                     = susVerts[1]
+								dstRight.x, dstRight.y             = srcRight.x, srcRight.y
+								dstRight.u, dstRight.v, dstRight.w = srcRight.u, uvyh * srcRight.w, srcRight.w
+								dstRight.a                         = srcRight.a
+
+								local dstLeft                      = susVerts[0]
+								dstLeft.x, dstLeft.y               = srcLeft.x, srcLeft.y
+								dstLeft.u, dstLeft.v, dstLeft.w    = srcLeft.u, uvyh * srcLeft.w, srcLeft.w
+								dstLeft.a                          = srcLeft.a
+							end
+							vi = 3
 						end
 					end
 
 					if suspos < minbound then
-						suspos, uvfh, enduv = minbound, uvfh - ((suspos - minbound) / ssy / th / segments), true
+						if frot then
+							suspos, uw, enduv = minbound, uw + (suspos - minbound) * (fuw / fh), true
+						else
+							suspos, uvfh, enduv = minbound, uvfh - ((suspos - minbound) / ssy / th / segments), true
+						end
 					end
 				end
 			end
