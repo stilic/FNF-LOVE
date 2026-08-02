@@ -90,7 +90,7 @@ function Character:new(x, y, char, isPlayer)
 	if data.position then
 		x, y = unpack(data.position)
 		if self.__reverseDraw then
-			x = x + self:getWidth() / (self.isPlayer and -4 or 4)
+			x = x + self.width / (self.isPlayer and -4 or 4)
 		end
 		position:set(x, y)
 	end
