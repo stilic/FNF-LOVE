@@ -104,12 +104,14 @@
 		"sprite": "noteSplashes",
 
 		"animations": [
-			["splash0", "Note splash 1", 24, false, true],
-			["splash1", "Note splash 2", 24, false, true]
+			["splash0", "splash1", 28, false, true],
+			["splash1", "splash2", 28, false, true],
+			["splash2", "splash3", 28, false, true]
 		],
 
-		"alpha": 0.6,
-		"scale": 6,
+		"alpha": 0.7,
+		"blend": "add",
+		"scale": 4.6,
 		"antialiasing": false
 	}
 }
