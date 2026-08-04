@@ -3,15 +3,14 @@ require("love.sound")
 local ffi = require("ffi")
 local bit = require("bit")
 
-local inputChannel = love.thread.getChannel("fft_input")
-local outputChannel = love.thread.getChannel("fft_output")
+local inputChannel = love.thread.getChannel("spectrum_input")
+local outputChannel = love.thread.getChannel("spectrum_output")
 
 local MAX_SIZE = 4096
 local real = ffi.new("float[?]", MAX_SIZE)
 local imag = ffi.new("float[?]", MAX_SIZE)
 
 local function doFFT(size)
-	-- bitreversal permutation
 	local j = 0
 	for i = 0, size - 1 do
 		if i < j then
@@ -54,7 +53,7 @@ local function doFFT(size)
 	end
 end
 
-local audioData = nil
+local decoder = nil
 local params = {}
 local ready = false
 
@@ -65,23 +64,29 @@ while true do
 			break
 		elseif msg.type == "init" then
 			params = msg
-			audioData = love.sound.newSoundData(msg.path)
-			params.sampleRate = audioData:getSampleRate()
-			params.channels = audioData:getChannelCount()
+			local probe = love.sound.newDecoder(msg.path, 4)
+			params.sampleRate = probe:getSampleRate()
+			params.channels = probe:getChannelCount()
+			params.bitDepth = probe:getBitDepth()
+			probe = nil
+			decoder = love.sound.newDecoder(msg.path, msg.fftSize * params.channels * (params.bitDepth / 8))
 			ready = true
 			outputChannel:push({type = "ready"})
 
 		elseif msg.type == "process" and ready then
 			local size = msg.size
-			local startSample = math.floor(msg.pos * params.sampleRate)
-			local totalSamples = audioData:getSampleCount()
+			decoder:seek(msg.pos)
+			local chunk = decoder:decode()
+
+			local frames = chunk and chunk:getSampleCount() or 0
+			local channels = params.channels
+			local ptr = chunk and ffi.cast("int16_t*", chunk:getFFIPointer())
 
 			for i = 0, size - 1 do
-				local idx = startSample + i
-				if idx >= 0 and idx < totalSamples then
-					local s = audioData:getSample(idx * params.channels)
-					if params.channels > 1 then
-						s = (s + audioData:getSample(idx * params.channels + 1)) * 0.5
+				if i < frames then
+					local s = ptr[i * channels] / 32768
+					if channels > 1 then
+						s = (s + ptr[i * channels + 1] / 32768) * 0.5
 					end
 
 					local window = 0.5 * (1 - math.cos((2 * math.pi * i) / (size - 1)))
@@ -115,13 +120,14 @@ while true do
 					count = count + 1
 				end
 
-				local amplitude = count > 0 and (sum / count) * (1.0 + (i / params.numBars) * 8.0) or 0
-				if amplitude > 0 then
-					local db = math.max(params.minDb, math.min(params.maxDb, 20 * math.log10(amplitude)))
-					bars[i] = (db - params.minDb) / (params.maxDb - params.minDb)
-				else
-					bars[i] = 0
-				end
+				local centerFreq = math.sqrt(math.exp(logStart) * math.exp(logEnd))
+				local boostDb = params.slopeDbPerOctave * (math.log(centerFreq / params.minFreq) / math.log(2))
+
+				local amplitude = count > 0 and (sum / count) or 0
+				local db = amplitude > 0 and (20 * math.log10(amplitude) + boostDb) or params.minDb
+				db = math.max(params.minDb, math.min(params.maxDb, db))
+
+				bars[i] = (db - params.minDb) / (params.maxDb - params.minDb)
 			end
 
 			outputChannel:push({type = "result", bars = bars})
@@ -131,13 +137,13 @@ while true do
 end
 ]]
 
-local fftThread = love.thread.newThread(thread)
-local inputChannel = love.thread.getChannel("fft_input")
-local outputChannel = love.thread.getChannel("fft_output")
+local spectrumThread = love.thread.newThread(thread)
+local inputChannel = love.thread.getChannel("spectrum_input")
+local outputChannel = love.thread.getChannel("spectrum_output")
 
-local FFT = Classic:extend()
+local Spectrum = Classic:extend()
 
-function FFT:new(numBars, audioFile, externalSource)
+function Spectrum:new(numBars, audioFile, externalSource)
 	self.numBars = numBars or 7
 	self.bars = {}
 	for i = 1, self.numBars do self.bars[i] = 0 end
@@ -147,20 +153,22 @@ function FFT:new(numBars, audioFile, externalSource)
 	self.isReady = false
 	self.processing = false
 
-	if not fftThread:isRunning() then fftThread:start() end
+	if not spectrumThread:isRunning() then spectrumThread:start() end
 
 	inputChannel:push({
 		type = "init",
 		path = paths.getPath(audioFile),
 		numBars = self.numBars,
+		fftSize = self.fftSize,
 		minDb = -75,
 		maxDb = -10,
+		slopeDbPerOctave = 4,
 		minFreq = 60,
 		maxFreq = 20000
 	})
 end
 
-function FFT:update(dt)
+function Spectrum:update(dt)
 	while true do
 		local msg = outputChannel:pop()
 		if not msg then break end
@@ -188,12 +196,12 @@ function FFT:update(dt)
 	end
 end
 
-function FFT:getBars() return self.bars end
-function FFT:getBar(index) return self.bars[index] or 0 end
+function Spectrum:getBars() return self.bars end
+function Spectrum:getBar(index) return self.bars[index] or 0 end
 
-function FFT.close()
+function Spectrum.close()
 	inputChannel:push({type = "quit"})
-	fftThread:wait()
+	spectrumThread:wait()
 end
 
-return FFT
+return Spectrum

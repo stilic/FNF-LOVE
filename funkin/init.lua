@@ -38,7 +38,7 @@ Receptor = require "funkin.gameplay.receptor"
 Note = require "funkin.gameplay.note"
 Notefield = require "funkin.gameplay.notefield"
 
-FFT = require "funkin.backend.fft"
+Spectrum = require "funkin.backend.spectrum"
 Countdown = require "funkin.gameplay.ui.countdown"
 HealthIcon = require "funkin.gameplay.ui.healthicon"
 HealthBar = require "funkin.gameplay.ui.healthbar"
@@ -196,7 +196,7 @@ function funkin.quit()
 	ClientPrefs.saveData()
 	paths.async.crashstop()
 	if Discord then Discord.shutdown() end
-	FFT.close()
+	Spectrum.close()
 end
 
 local function error_printer(msg, layer)
@@ -283,7 +283,7 @@ util.setEnvironment = funkin.setEnvironment
 function funkin.throwError(msg)
 	paths.async.crashstop()
 	if Discord then Discord.shutdown() end
-	FFT.close()
+	Spectrum.close()
 	pcall(love.errorhandler_quit)
 
 	msg = tostring(msg)
