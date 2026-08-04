@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "renderType": "multisparrow",
-  "offsets": [0, -50],
+  "offsets": [-50, -50],
   "danceEvery": 1,
   "scale": 1,
   "name": "Tankman",
@@ -10,7 +10,7 @@
   "singTime": 8,
   "startingAnimation": "idle",
   "isPixel": false,
-  "assetPath": "characters/tankmanCaptain",
+  "assetPath": "characters/tankman/tankmanCaptain",
   "healthIcon": {
     "offsets": [0, 0],
     "id": "tankman",
@@ -29,11 +29,11 @@
     },
     {
       "flipY": false,
-      "offsets": [90, -13],
+      "offsets": [-22, -28],
       "frameRate": 24,
       "prefix": "Tankman Right Note instance 1",
       "flipX": false,
-      "name": "singLEFT"
+      "name": "singRIGHT"
     },
     {
       "flipY": false,
@@ -53,11 +53,11 @@
     },
     {
       "flipY": false,
-      "offsets": [-22, -28],
+      "offsets": [90, -13],
       "frameRate": 24,
       "prefix": "Tankman Note Left instance 1",
       "flipX": false,
-      "name": "singRIGHT"
+      "name": "singLEFT"
     },
     {
       "flipY": false,

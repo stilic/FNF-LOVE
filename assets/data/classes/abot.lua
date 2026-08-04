@@ -1,5 +1,5 @@
-local ABot = SpriteGroup:extend("ABot")
-local Visualizer = SpriteGroup:extend("Visualizer")
+local ABot = DrawableGroup:extend("ABot")
+local Visualizer = DrawableGroup:extend("Visualizer")
 
 function Visualizer:new(x, y, fftInstance, variant)
 	Visualizer.super.new(self, x, y)
@@ -67,7 +67,7 @@ function ABot:new(x, y, variant)
 	self.variant = variant or "normal"
 
 	local path = "songs/" .. paths.formatToSongPath(PlayState.SONG.song) .. "/Inst.ogg"
-	local fft = FFT(7, path, game.sound.music._source)
+	local fft = Spectrum(7, path, game.sound.music._source)
 	fft.fftSize = 1024
 	self.fft = fft
 

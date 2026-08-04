@@ -10,7 +10,7 @@
     },
     {
       "name": "bgTrees",
-      "assetPath": "erect/bgtrees",
+      "assetPath": "bgtrees",
       "zIndex": -101,
       "position": [200, 50],
       "scale": [1, 1],
@@ -28,7 +28,7 @@
     },
     {
       "name": "bgDark",
-      "assetPath": "erect/bgDark",
+      "assetPath": "bgDark",
       "zIndex": -100,
       "position": [-560, -220],
       "scale": [1, 1],
@@ -36,7 +36,7 @@
     },
     {
       "name": "bgLight",
-      "assetPath": "erect/bgLight",
+      "assetPath": "bgLight",
       "zIndex": -99,
       "position": [-560, -220],
       "scale": [1, 1],
@@ -44,7 +44,7 @@
     },
     {
       "name": "stairsDark",
-      "assetPath": "erect/stairsDark",
+      "assetPath": "stairsDark",
       "zIndex": 400,
       "position": [966, -225],
       "scale": [1, 1],
@@ -52,7 +52,7 @@
     },
     {
       "name": "stairsLight",
-      "assetPath": "erect/stairsLight",
+      "assetPath": "stairsLight",
       "zIndex": 401,
       "position": [966, -225],
       "scale": [1, 1],

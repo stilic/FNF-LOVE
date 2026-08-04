@@ -10,7 +10,7 @@ end
 function onEvent(e)
 	if not abot then return end
 	if e.e == "FocusCamera" then
-		local isTable = type(e.v) == "table"
+		local isTable = typeof(e.v) == "table"
 		local n = isTable and e.v.char or tonumber(e.v)
 		switch(n, {
 			[0] = function() abot:setEyeDirection(1) end,

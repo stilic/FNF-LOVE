@@ -1,0 +1,130 @@
+name: "Philly (Streets) [Erect]"
+camera zoom: 0.77
+
+properties:
+  - name: phillySkyline
+    z: 20
+    pos: [-545, -273]
+    scroll: [0.2, 0.2]
+    asset: phillySkyline
+
+  - name: phillyForegroundCity
+    z: 30
+    pos: [600, 69]
+    scroll: [0.3, 0.3]
+    asset: phillyForegroundCity
+
+  - name: phillyForegroundCity2
+    z: 30
+    pos: [1860, 185]
+    scroll: [0.3, 0.3]
+    asset: phillyForegroundCity
+    angle: 5
+    flipX: true
+
+  - name: phillyConstruction2
+    z: 40
+    pos: [1795, 360]
+    scroll: [0.7, 1]
+    asset: phillyConstruction
+
+  - name: phillyHighwayLights
+    z: 50
+    pos: [122, 201]
+    scroll: [0.8, 0.8]
+    asset: phillyHighwayLights
+
+  - name: phillyHighwayLights_lightmap
+    z: 50
+    pos: [122, 201]
+    scroll: [0.8, 0.8]
+    asset: phillyHighwayLights_lightmap
+
+  - name: phillyHighway2
+    z: 60
+    pos: [-23, 105]
+    scroll: [0.8, 0.8]
+    asset: phillyHighway
+
+  - name: grey1
+    z: 91
+    pos: [-388, 7]
+    scale: [1.3, 1.3]
+    scroll: [1, 1]
+    alpha: 0.3
+    asset: greyGradient
+
+  - name: grey2
+    z: 91
+    pos: [-388, 7]
+    scale: [1.3, 1.3]
+    scroll: [1, 1]
+    alpha: 0.8
+    asset: greyGradient
+
+  - name: phillyCars
+    z: 80
+    pos: [1200, 818]
+    scroll: [0.9, 1]
+    asset: phillyCars
+    animations:
+      - {name: car1, prefix: car1, fps: 24}
+      - {name: car2, prefix: car2, fps: 24}
+      - {name: car3, prefix: car3, fps: 24}
+      - {name: car4, prefix: car4, fps: 24}
+
+  - name: phillyCars2
+    z: 78
+    pos: [1200, 818]
+    scroll: [0.9, 1]
+    asset: phillyCars
+    animations:
+      - {name: car1, prefix: car1, fps: 24, flipX: true}
+      - {name: car2, prefix: car2, fps: 24, flipX: true}
+      - {name: car3, prefix: car3, fps: 24, flipX: true}
+      - {name: car4, prefix: car4, fps: 24, flipX: true}
+
+  - name: phillyTraffic
+    z: 90
+    pos: [1840, 608]
+    scroll: [0.9, 1]
+    asset: phillyTraffic
+    animations:
+      - {name: togreen, prefix: redtogreen, fps: 24}
+      - {name: tored,   prefix: greentored, fps: 24}
+
+  - name: phillyTraffic_lightmap
+    z: 90
+    pos: [1840, 608]
+    scroll: [0.9, 1]
+    asset: phillyTraffic_lightmap
+
+  - name: phillyForeground
+    z: 100
+    pos: [88, 317]
+    scroll: [1, 1]
+    asset: phillyForeground
+
+  - name: paper
+    z: 800
+    pos: [350, 728]
+    scroll: [1.1, 1.1]
+    alpha: 0
+    asset: paper
+    startAnim: paperBlow
+    animations:
+      - {name: paperBlow, prefix: "Paper Blowing instance 1", fps: 24}
+
+characters:
+  bf:
+    z: 400
+    pos: [2151, 1228]
+    cam: [-350, -100]
+  gf:
+    z: 300
+    pos: [1520, 1080]
+    cam: [0, 0]
+  dad:
+    z: 350
+    pos: [920, 1310]
+    cam: [500, -100]

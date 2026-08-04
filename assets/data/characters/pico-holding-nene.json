@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "name": "Pico (Holding Nene)",
-  "assetPath": "characters/picoAndNene",
+  "assetPath": "characters/pico/picoAndNene",
   "healthIcon": {
     "id": "pico",
     "flipX": false

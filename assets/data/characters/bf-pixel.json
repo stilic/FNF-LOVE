@@ -1,7 +1,7 @@
 {
   "version": "1.0.1",
   "name": "Boyfriend (Pixel)",
-  "assetPath": "characters/boyfriend/bfPixel",
+  "assetPath": "characters/bf/bfPixel",
   "flipX": true,
   "renderType": "multisparrow",
   "singTime": 8.0,

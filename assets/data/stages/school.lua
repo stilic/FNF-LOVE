@@ -1,4 +1,4 @@
-local BackgroundGirls = require "backgroundgirls"
+--local BackgroundGirls = require "backgroundgirls"
 
 local bgGirls, cam
 local floor = math.floor
@@ -28,15 +28,13 @@ function create()
 	cam.antialiasing = false
 	table.insert(game.cameras.list, 2, cam)
 
-	boyfriendPos:set(1080, 60)
-	gfPos:set(580, 90)
-	dadPos:set(0, -400)
+	boyfriendPos:set(1240, 830)
+	gfPos:set(900, 760)
+	dadPos:set(500, 920)
 
-	boyfriendCam:set(-20, 0)
-	dadCam:set(80, 50)
+	boyfriendCam:set(-300, -8)
+	dadCam:set(305, -1)
 	gfCam:set(gfCam.x + 40, gfCam.y)
-	-- gfCam.x = gfCam.x + 40
-	-- gfCam.y = gfCam.y - 4
 
 	local bgSky = Sprite()
 	bgSky:loadTexture(paths.getImage(SCRIPT_PATH .. 'weebSky'))
@@ -81,10 +79,10 @@ function create()
 	add(treeLeaves)
 	treeLeaves.antialiasing = false
 
-	bgGirls = BackgroundGirls(0, 26, paths.formatToSongPath(PlayState.SONG.song) == "roses")
-	bgGirls:updateHitbox()
-	bgGirls.antialiasing = false
-	add(bgGirls)
+	-- bgGirls = BackgroundGirls(0, 26, paths.formatToSongPath(PlayState.SONG.song) == "roses")
+	-- bgGirls:updateHitbox()
+	-- bgGirls.antialiasing = false
+	-- add(bgGirls)
 
 	refresh()
 end

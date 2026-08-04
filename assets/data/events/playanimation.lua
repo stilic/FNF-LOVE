@@ -5,7 +5,8 @@ function event(params)
 		[{"dad", "opponent", "enemy"}] = function() target = state.dad end,
 		[{"girlfriend", "gf"}] = function() target = state.gf end
 	})
-	if target then
+	if target and target.anim:has(data.anim) then
 		target:playAnim(data.anim, data.force, nil, true)
+		target.lastHit = 0
 	end
 end

@@ -11,12 +11,12 @@ function create()
 	cam.antialiasing = false
 	table.insert(game.cameras.list, 2, cam)
 
-	boyfriendPos:set(1080, 60)
-	gfPos:set(580, 90)
-	dadPos:set(0, -400)
+	boyfriendPos:set(1240, 830)
+	gfPos:set(900, 760)
+	dadPos:set(200, 500)
 
-	boyfriendCam:set(-20, 0)
-	dadCam:set(80, 50)
+	boyfriendCam:set(-300, -8)
+	dadCam:set(350, 50)
 	gfCam:set(gfCam.x + 40, gfCam.y)
 
 	game.camera:resize(floor(1280 / 6), floor(720 / 6), 1, 1, true)
@@ -57,7 +57,6 @@ function postCreate()
 	if dad then
 		stage:insert(stage:indexOf(dad), Trail(dad, 4, 24, 0.3, 0.069))
 	end
-
 
 	dad:dance()
 	dad:finish()

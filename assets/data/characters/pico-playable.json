@@ -1,30 +1,30 @@
 {
-  "version": "1.0.0",
-  "name": "Pico (Playable)",
-  "assetPath": "characters/pico/pico",
-  "renderType": "animateatlas",
-  "healthIcon": {
-    "id": "pico",
-    "flipX": false
-  },
-  "offsets": [0, -30],
-  "flipX": true,
-  "animations": [
-    {"name": "idle", "prefix": "idle"},
-    {"name": "singRIGHT", "prefix": "right"},
-    {"name": "singDOWN", "prefix": "down"},
-    {"name": "singUP", "prefix": "up"},
-    {"name": "singLEFT", "prefix": "left"},
+	"version": "1.0.0",
+	"name": "Pico (Playable)",
+	"assetPath": "characters/pico/pico",
+	"renderType": "animateatlas",
+	"healthIcon": {
+		"id": "pico",
+		"flipX": false
+	},
+	"cameraOffsets": [30, 30],
+	"flipX": true,
+	"animations": [
+		{"name": "idle", "prefix": "idle"},
+		{"name": "singRIGHT", "prefix": "right"},
+		{"name": "singDOWN", "prefix": "down"},
+		{"name": "singUP", "prefix": "up"},
+		{"name": "singLEFT", "prefix": "left"},
 
-    {"name": "singLEFTmiss", "prefix": "miss left"},
-    {"name": "singDOWNmiss", "prefix": "miss down"},
-    {"name": "singUPmiss", "prefix": "miss up"},
-    {"name": "singRIGHTmiss", "prefix": "miss right"},
+		{"name": "singLEFTmiss", "prefix": "miss left"},
+		{"name": "singDOWNmiss", "prefix": "miss down"},
+		{"name": "singUPmiss", "prefix": "miss up"},
+		{"name": "singRIGHTmiss", "prefix": "miss right"},
 
-    {"name": "shootMISS", "prefix": "hit can"},
-    {"name": "weekend-1-cockgun", "prefix": "cock"},
-    {"name": "weekend-1-firegun", "prefix": "shoot hip"},
-    {"name": "hey", "prefix": "hey"},
-    {"name": "cheer", "prefix": "cheer"}
-  ]
+		{"name": "shootMISS", "prefix": "hit can"},
+		{"name": "weekend-1-cockgun", "prefix": "cock"},
+		{"name": "weekend-1-firegun", "prefix": "shoot hip"},
+		{"name": "hey", "prefix": "hey"},
+		{"name": "cheer", "prefix": "cheer"}
+	]
 }

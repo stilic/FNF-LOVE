@@ -5,7 +5,7 @@
   "props": [
     {
       "name": "bg",
-      "assetPath": "erect/bg",
+      "assetPath": "bg",
       "position": [-985, -805],
       "scale": [1.15, 1.15],
       "zIndex": 10,
@@ -13,7 +13,7 @@
     },
     {
       "name": "sniper",
-      "assetPath": "erect/sniper",
+      "assetPath": "sniper",
       "zIndex": 20,
       "position": [-127, 349],
       "scale": [1.15, 1.15],
@@ -35,7 +35,7 @@
     },
     {
       "name": "guy",
-      "assetPath": "erect/guy",
+      "assetPath": "guy",
       "zIndex": 20,
       "position": [1398, 407],
       "scale": [1.15, 1.15],
@@ -52,7 +52,7 @@
     },
     {
       "name": "tankBricks",
-      "assetPath": "erect/bricksGround",
+      "assetPath": "bricksGround",
       "position": [465, 760],
       "scroll": [1, 1],
       "scale": [1.15, 1.15],

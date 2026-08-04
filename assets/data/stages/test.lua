@@ -41,6 +41,29 @@ function create()
 	refresh()
 end
 
+local offset = Point()
+function postUpdate(dt)
+	game.camera.target = offset
+
+	if game.keys.pressed.LEFT then
+		offset.x = offset.x - 200 * dt
+	elseif game.keys.pressed.RIGHT then
+		offset.x = offset.x + 200 * dt
+	end
+
+	if game.keys.pressed.UP then
+		offset.y = offset.y - 200 * dt
+	elseif game.keys.pressed.DOWN then
+		offset.y = offset.y + 200 * dt
+	end
+
+	if game.keys.justPressed.P then
+		state.camZoom = state.camZoom + 0.05
+	elseif game.keys.justPressed.O then
+		state.camZoom = state.camZoom - 0.05
+	end
+end
+
 function postCreate()
 	local char = gf
 	if char then
